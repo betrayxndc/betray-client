@@ -1196,15 +1196,25 @@ export function getDesktopHtml(champions: Champion[]): string {
         const item = saved[k];
         const card = document.createElement('div');
         card.className = 'p-3 rounded-lg bg-[#07090e] border border-rose-950 flex items-center justify-between gap-3';
-        card.innerHTML = 
-          '<div class="flex items-center gap-2.5 min-w-0">' +
-            '<div class="w-8 h-8 rounded-full bg-rose-950 border border-rose-600 flex items-center justify-center text-xs font-bold text-rose-300">🌸</div>' +
-            '<div class="min-w-0">' +
-              '<div class="text-xs font-bold text-slate-200 truncate">' + (item.skinName || 'Skin #' + item.skinId) + '</div>' +
-              '<div class="text-[10px] text-slate-400 font-mono">Champ: ' + k + ' • SkinID: ' + item.skinId + '</div>' +
-            '</div>' +
-          '</div>' +
-          '<button onclick="removeSavedRoseSkinDesktop(\'' + k + '\')" class="text-rose-500 hover:text-rose-300 text-xs font-bold p-1">✕</button>';
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'flex items-center gap-2.5 min-w-0';
+        contentDiv.innerHTML = 
+          '<div class="w-8 h-8 rounded-full bg-rose-950 border border-rose-600 flex items-center justify-center text-xs font-bold text-rose-300 shrink-0">🌸</div>' +
+          '<div class="min-w-0">' +
+            '<div class="text-xs font-bold text-slate-200 truncate">' + (item.skinName || 'Skin #' + item.skinId) + '</div>' +
+            '<div class="text-[10px] text-slate-400 font-mono">Champ: ' + k + ' • SkinID: ' + item.skinId + '</div>' +
+          '</div>';
+        
+        const delBtn = document.createElement('button');
+        delBtn.className = 'text-rose-500 hover:text-rose-300 text-xs font-bold p-1 cursor-pointer';
+        delBtn.innerText = '✕';
+        delBtn.onclick = function() {
+          removeSavedRoseSkinDesktop(k);
+        };
+
+        card.appendChild(contentDiv);
+        card.appendChild(delBtn);
         grid.appendChild(card);
       });
     }
@@ -1462,35 +1472,66 @@ export function getDesktopHtml(champions: Champion[]): string {
 
     function refreshSummonerData() {
       if (window.pywebview && window.pywebview.api && window.pywebview.api.get_current_summoner_profile) {
-        window.pywebview.api.get_current_summoner_profile().then(res => {
-          if (res && res.success && res.summoner) {
-            const name = res.summoner.gameName || res.summoner.displayName || 'Invocador';
-            const tag = res.summoner.tagLine || 'BR1';
-            document.getElementById('profile-name').innerText = name;
-            document.getElementById('profile-level').innerText = 'Nível ' + (res.summoner.summonerLevel || 1);
-            document.getElementById('profile-tag').innerText = '#' + tag + ' • LCU Conectado';
-            document.getElementById('profile-icon').src = 'https://ddragon.leagueoflegends.com/cdn/14.24.1/img/profileicon/' + (res.summoner.profileIconId || 29) + '.png';
+        window.pywebview.api.get_current_summoner_profile().then(handleSummonerResult).catch(() => {});
+      } else {
+        fetch('/api/summoner').then(r => r.json()).then(handleSummonerResult).catch(() => {});
+      }
+    }
 
-            if (res.ranked && res.ranked.queues) {
-              const solo = res.ranked.queues.find(q => q.queueType === 'RANKED_SOLO_5x5');
-              if (solo) {
-                document.getElementById('solo-tier').innerText = solo.tier + ' ' + solo.division;
-                document.getElementById('solo-lp').innerText = solo.leaguePoints + ' LP';
-              }
-              const flex = res.ranked.queues.find(q => q.queueType === 'RANKED_FLEX_SR');
-              if (flex) {
-                document.getElementById('flex-tier').innerText = flex.tier + ' ' + flex.division;
-                document.getElementById('flex-lp').innerText = flex.leaguePoints + ' LP';
-              }
-            }
+    function handleSummonerResult(res) {
+      if (res && res.success && res.summoner) {
+        const name = res.summoner.gameName || res.summoner.displayName || 'Invocador';
+        const tag = res.summoner.tagLine || 'BR1';
+        document.getElementById('profile-name').innerText = name;
+        document.getElementById('profile-level').innerText = 'Nível ' + (res.summoner.summonerLevel || 1);
+        document.getElementById('profile-tag').innerText = '#' + tag + ' • LCU Conectado';
+        document.getElementById('profile-icon').src = 'https://ddragon.leagueoflegends.com/cdn/14.24.1/img/profileicon/' + (res.summoner.profileIconId || 29) + '.png';
+
+        if (res.ranked && res.ranked.queues) {
+          const solo = res.ranked.queues.find(q => q.queueType === 'RANKED_SOLO_5x5');
+          if (solo) {
+            document.getElementById('solo-tier').innerText = solo.tier + ' ' + solo.division;
+            document.getElementById('solo-lp').innerText = solo.leaguePoints + ' LP';
           }
-        });
+          const flex = res.ranked.queues.find(q => q.queueType === 'RANKED_FLEX_SR');
+          if (flex) {
+            document.getElementById('flex-tier').innerText = flex.tier + ' ' + flex.division;
+            document.getElementById('flex-lp').innerText = flex.leaguePoints + ' LP';
+          }
+        }
       }
     }
 
     function syncSettings() {
       if (window.pywebview && window.pywebview.api && window.pywebview.api.save_settings) {
         window.pywebview.api.save_settings(currentSettings);
+      } else {
+        fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentSettings)
+        }).catch(() => {});
+      }
+    }
+
+    function checkLcuStatus() {
+      if (window.pywebview && window.pywebview.api && window.pywebview.api.get_lcu_status) {
+        window.pywebview.api.get_lcu_status().then(updateLcuBadge).catch(() => {});
+      } else {
+        fetch('/api/status').then(r => r.json()).then(updateLcuBadge).catch(() => {});
+      }
+    }
+
+    function updateLcuBadge(status) {
+      const badge = document.getElementById('lcu-status-badge');
+      const txt = document.getElementById('lcu-status-text');
+      if (!badge || !txt) return;
+      if (status && status.connected) {
+        badge.className = 'flex items-center gap-2 px-3 py-1 rounded-md text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-800/60';
+        txt.innerText = 'LCU: Conectado (Porta ' + status.port + ')';
+      } else {
+        badge.className = 'flex items-center gap-2 px-3 py-1 rounded-md text-xs font-semibold bg-amber-950/80 text-amber-300 border border-amber-800/60';
+        txt.innerText = 'Aguardando LoL...';
       }
     }
 
@@ -1518,23 +1559,9 @@ export function getDesktopHtml(champions: Champion[]): string {
       renderRoseChampions();
       renderMockLobby();
 
+      checkLcuStatus();
       setTimeout(refreshSummonerData, 1000);
-
-      setInterval(() => {
-        if (window.pywebview && window.pywebview.api && window.pywebview.api.get_lcu_status) {
-          window.pywebview.api.get_lcu_status().then(status => {
-            const badge = document.getElementById('lcu-status-badge');
-            const txt = document.getElementById('lcu-status-text');
-            if (status.connected) {
-              badge.className = 'flex items-center gap-2 px-3 py-1 rounded-md text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-800/60';
-              txt.innerText = 'LCU: Conectado (Porta ' + status.port + ')';
-            } else {
-              badge.className = 'flex items-center gap-2 px-3 py-1 rounded-md text-xs font-semibold bg-amber-950/80 text-amber-300 border border-amber-800/60';
-              txt.innerText = 'Aguardando LoL...';
-            }
-          });
-        }
-      }, 2000);
+      setInterval(checkLcuStatus, 2000);
     });
   </script>
 </body>

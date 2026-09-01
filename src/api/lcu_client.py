@@ -31,22 +31,68 @@ class LCUClient:
         return self.find_lockfile()
 
     def find_lockfile(self):
-        for proc in psutil.process_iter(['name', 'cmdline']):
-            try:
-                name = proc.info['name'] or ''
-                if 'LeagueClientUx' in name or 'LeagueClient' in name:
-                    cmdline = ' '.join(proc.info['cmdline'] or [])
-                    port_match = re.search(r'--app-port=([0-9]+)', cmdline)
-                    token_match = re.search(r'--remoting-auth-token=([\w-]+)', cmdline)
-                    if port_match and token_match:
-                        self.port = port_match.group(1)
-                        self.auth_token = token_match.group(1)
-                        self.setup_auth()
-                        self.connected = True
-                        return True
-            except (psutil.NoSuchProcess, psutil.AccessDenied, Exception):
-                continue
+        # Estratégia 1: Process command-line args via psutil
+        try:
+            for proc in psutil.process_iter(['name', 'cmdline', 'exe']):
+                try:
+                    name = proc.info.get('name') or ''
+                    if 'LeagueClientUx' in name or 'LeagueClient' in name:
+                        cmdline_list = proc.info.get('cmdline') or []
+                        cmdline = ' '.join(cmdline_list)
+                        port_match = re.search(r'--app-port=([0-9]+)', cmdline)
+                        token_match = re.search(r'--remoting-auth-token=([\w-]+)', cmdline)
+                        if port_match and token_match:
+                            self.port = port_match.group(1)
+                            self.auth_token = token_match.group(1)
+                            self.setup_auth()
+                            self.connected = True
+                            return True
+                        
+                        # Estratégia 2: Lockfile na pasta do executável do processo
+                        exe_path = proc.info.get('exe')
+                        if exe_path:
+                            exe_dir = os.path.dirname(exe_path)
+                            lock_candidate = os.path.join(exe_dir, "lockfile")
+                            if self.try_read_lockfile(lock_candidate):
+                                return True
+                except (psutil.NoSuchProcess, psutil.AccessDenied, Exception):
+                    continue
+        except Exception:
+            pass
+
+        # Estratégia 3: Caminhos comuns do League of Legends no Windows
+        common_paths = [
+            r"C:\Riot Games\League of Legends\lockfile",
+            r"D:\Riot Games\League of Legends\lockfile",
+            r"E:\Riot Games\League of Legends\lockfile",
+            r"F:\Riot Games\League of Legends\lockfile",
+            r"C:\Program Files\Riot Games\League of Legends\lockfile",
+            r"C:\Program Files (x86)\Riot Games\League of Legends\lockfile"
+        ]
+        for p in common_paths:
+            if self.try_read_lockfile(p):
+                return True
+
         self.connected = False
+        return False
+
+    def try_read_lockfile(self, file_path):
+        if not file_path or not os.path.exists(file_path):
+            return False
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+            parts = content.split(':')
+            if len(parts) >= 5:
+                # Format: ProcessName:PID:Port:Password:Protocol
+                self.port = parts[2]
+                self.auth_token = parts[3]
+                self.protocol = parts[4] if len(parts) > 4 else 'https'
+                self.setup_auth()
+                self.connected = True
+                return True
+        except Exception:
+            pass
         return False
 
     def setup_auth(self):
