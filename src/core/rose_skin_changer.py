@@ -110,8 +110,12 @@ class RoseSkinChanger:
         }
 
     def get_configured_skin_for_champion(self, champ_id):
-        """Busca a skin configurada para um campeão."""
-        champ_id = int(champ_id)
+        """Busca a skin configurada para um campeão através de múltiplos métodos de indexação."""
+        try:
+            champ_id = int(champ_id)
+        except Exception:
+            return None
+
         if champ_id in self.active_skins:
             return self.active_skins[champ_id]
 
@@ -120,23 +124,47 @@ class RoseSkinChanger:
             self.settings.get("roseSelectedSkins") or 
             {}
         )
+        
+        # 1. Busca direta por ID string
         if str(champ_id) in saved_skins:
             data = saved_skins[str(champ_id)]
-            return {
-                "skin_id": data.get("skinId"),
-                "skin_num": data.get("skinNum", 0),
-                "chroma_id": data.get("chromaId"),
-                "skin_name": data.get("skinName", "")
-            }
+            if isinstance(data, dict):
+                return {
+                    "skin_id": data.get("skinId") or data.get("skin_id"),
+                    "skin_num": data.get("skinNum", 0) if data.get("skinNum") is not None else data.get("skin_num", 0),
+                    "chroma_id": data.get("chromaId") if data.get("chromaId") is not None else data.get("chroma_id"),
+                    "skin_name": data.get("skinName") or data.get("skin_name", "")
+                }
 
+        # 2. Busca por iteração profunda em todos os registros salvos
+        for key, data in saved_skins.items():
+            if isinstance(data, dict):
+                s_id = data.get("skinId") or data.get("skin_id")
+                if s_id is not None:
+                    try:
+                        if (int(s_id) // 1000) == champ_id:
+                            return {
+                                "skin_id": int(s_id),
+                                "skin_num": data.get("skinNum", 0) if data.get("skinNum") is not None else data.get("skin_num", 0),
+                                "chroma_id": data.get("chromaId") if data.get("chromaId") is not None else data.get("chroma_id"),
+                                "skin_name": data.get("skinName") or data.get("skin_name", "")
+                            }
+                    except Exception:
+                        pass
+
+        # 3. Fallback pela skin ativa atual
         curr_skin_id = self.settings.get("rose_current_skin_id") or self.settings.get("roseCurrentSkinId")
-        if curr_skin_id and (int(curr_skin_id) // 1000) == champ_id:
-            return {
-                "skin_id": int(curr_skin_id),
-                "skin_num": int(curr_skin_id) % 1000,
-                "chroma_id": self.settings.get("rose_current_chroma_id") or self.settings.get("roseCurrentChromaId"),
-                "skin_name": self.settings.get("rose_current_skin_name", "")
-            }
+        if curr_skin_id:
+            try:
+                if (int(curr_skin_id) // 1000) == champ_id:
+                    return {
+                        "skin_id": int(curr_skin_id),
+                        "skin_num": int(curr_skin_id) % 1000,
+                        "chroma_id": self.settings.get("rose_current_chroma_id") or self.settings.get("roseCurrentChromaId"),
+                        "skin_name": self.settings.get("rose_current_skin_name") or self.settings.get("roseCurrentSkinName", "")
+                    }
+            except Exception:
+                pass
 
         return None
 
@@ -282,7 +310,21 @@ class RoseSkinChanger:
             return False
 
         # Campeão travado ou intencionado
-        champ_id = my_player.get("championId") or my_player.get("championPickIntent")
+        champ_id = my_player.get("championId") or my_player.get("championPickIntent") or 0
+        
+        # Se não achou em myTeam, inspeciona as ações da sessão
+        if champ_id <= 0:
+            actions = session_data.get("actions", [])
+            for action_group in actions:
+                for action in action_group:
+                    if action.get("actorCellId") == local_cell_id and action.get("type") == "pick":
+                        c_id = action.get("championId", 0)
+                        if c_id > 0:
+                            champ_id = c_id
+                            break
+                if champ_id > 0:
+                    break
+
         if not champ_id or champ_id <= 0:
             return False
 
@@ -304,8 +346,9 @@ class RoseSkinChanger:
         is_finalization = (phase == "FINALIZATION")
         needs_apply = (current_selected != target_skin_id) or (self.last_applied_skin_per_champ.get(champ_id) != target_skin_id)
 
-        if needs_apply or (is_finalization and self.last_applied_skin_per_champ.get(f"{champ_id}_fin") != target_skin_id):
+        if needs_apply or is_finalization:
             applied = self.apply_skin_to_lcu(champ_id, skin_id, chroma_id)
+            self.last_applied_skin_per_champ[champ_id] = target_skin_id
             if is_finalization:
                 self.last_applied_skin_per_champ[f"{champ_id}_fin"] = target_skin_id
             return applied

@@ -676,11 +676,23 @@ export const SkinChangerTab: React.FC<SkinChangerTabProps> = ({
 
                   {/* Splash Art Stage */}
                   <div
-                    className="relative h-56 sm:h-72 rounded-lg overflow-hidden border border-rose-800/60 shadow-[0_0_25px_rgba(0,0,0,0.8)] bg-cover bg-center flex items-end p-4 sm:p-5 transition-all duration-300"
+                    className={`relative h-56 sm:h-72 rounded-lg overflow-hidden border transition-all duration-300 bg-cover bg-center flex items-end p-4 sm:p-5 ${
+                      savedSkinData?.skinNum === previewSkin.num
+                        ? 'border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] ring-1 ring-emerald-500/50'
+                        : 'border-rose-800/60 shadow-[0_0_25px_rgba(0,0,0,0.8)]'
+                    }`}
                     style={{
                       backgroundImage: `linear-gradient(to top, rgba(5,6,8,0.95) 15%, rgba(5,6,8,0.25) 50%, rgba(5,6,8,0.6) 100%), url(${previewSkin.splashUrl})`
                     }}
                   >
+                    {/* Live confirmation badge overlay */}
+                    {savedSkinData?.skinNum === previewSkin.num && (
+                      <div className="absolute top-3 left-3 px-3 py-1 rounded-md bg-emerald-950/90 border border-emerald-400 text-emerald-300 text-xs font-cinzel font-bold flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.6)] backdrop-blur-md">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 animate-bounce" />
+                        <span>✓ SKIN ATIVA & ARMADA NA MEMÓRIA</span>
+                      </div>
+                    )}
+
                     <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-end justify-between w-full gap-3">
                       <div>
                         <div className="flex items-center gap-2">
@@ -705,10 +717,23 @@ export const SkinChangerTab: React.FC<SkinChangerTabProps> = ({
                         id="btn-rose-confirm-stage"
                         onClick={() => handleSaveAndArmSkin(selectedChampion, previewSkin, selectedChromaIndex)}
                         disabled={isInjecting}
-                        className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white text-xs font-bold rounded-lg font-cinzel uppercase tracking-wider cursor-pointer shadow-[0_0_15px_rgba(225,29,72,0.4)] transition-all flex items-center justify-center gap-1.5 shrink-0"
+                        className={`w-full sm:w-auto px-5 py-2.5 text-xs font-bold rounded-lg font-cinzel uppercase tracking-wider cursor-pointer transition-all flex items-center justify-center gap-1.5 shrink-0 ${
+                          savedSkinData?.skinNum === previewSkin.num
+                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)] border border-emerald-400'
+                            : 'bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white shadow-[0_0_15px_rgba(225,29,72,0.4)]'
+                        }`}
                       >
-                        <BookmarkCheck className="w-4 h-4" />
-                        <span>{isInjecting ? 'Salvando...' : 'Salvar Esta Skin'}</span>
+                        {savedSkinData?.skinNum === previewSkin.num ? (
+                          <>
+                            <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                            <span>✓ Salva na Memória</span>
+                          </>
+                        ) : (
+                          <>
+                            <BookmarkCheck className="w-4 h-4" />
+                            <span>{isInjecting ? 'Salvando...' : 'Salvar Esta Skin'}</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -829,20 +854,45 @@ export const SkinChangerTab: React.FC<SkinChangerTabProps> = ({
 
               {/* Skins Gallery Grid */}
               <div className="bento-card p-5 space-y-4">
-                <div className="flex items-center justify-between border-b border-rose-950/60 pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rose-950/60 pb-3">
                   <div>
                     <h3 className="font-cinzel text-base font-bold text-white flex items-center gap-2">
                       <span className="w-6 h-6 rounded-full bg-rose-600 text-white text-xs flex items-center justify-center font-mono">2</span>
                       TODAS AS SKINS DE {selectedChampion.name.toUpperCase()}
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Selecione a skin desejada para salvar permanentemente na memória.
+                      Clique em qualquer skin para selecioná-la e salvá-la instantaneamente na memória.
                     </p>
                   </div>
-                  <span className="text-xs text-rose-400 font-mono font-bold bg-rose-950/80 px-2 py-1 rounded border border-rose-800/60">
+                  <span className="text-xs text-rose-400 font-mono font-bold bg-rose-950/80 px-2 py-1 rounded border border-rose-800/60 self-start sm:self-auto">
                     {championSkins.length} SKINS DESBLOQUEADAS
                   </span>
                 </div>
+
+                {/* Instant Confirmation Banner if skin is armed */}
+                {savedSkinData && (
+                  <div className="p-3.5 rounded-xl bg-gradient-to-r from-emerald-950/90 via-[#07090e] to-rose-950/80 border-2 border-emerald-500/80 shadow-[0_0_25px_rgba(16,185,129,0.3)] flex items-center justify-between gap-3 animate-fadeIn">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden border border-emerald-400 shrink-0 bg-black shadow-md">
+                        <img src={previewSkin.splashUrl} alt={savedSkinData.skinName} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                          <span>CONFIRMAÇÃO VISUAL // SKIN SALVA & ARMADA</span>
+                        </div>
+                        <div className="text-sm font-bold text-white font-cinzel truncate">
+                          {savedSkinData.skinName} <span className="text-xs font-mono text-emerald-300 font-normal">(ID {savedSkinData.skinId})</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="px-2.5 py-1 rounded bg-emerald-900/80 text-emerald-200 border border-emerald-500/60 font-mono text-[10px] font-bold shadow-sm">
+                        ✓ AUTO-SELECT PRONTO
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Skins Cards List */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
@@ -856,7 +906,9 @@ export const SkinChangerTab: React.FC<SkinChangerTabProps> = ({
                         id={`rose-skin-card-${skin.num}`}
                         onClick={() => handleSelectSkin(skin)}
                         className={`group relative rounded-lg overflow-hidden border cursor-pointer transition-all ${
-                          isSelected
+                          isSaved
+                            ? 'border-emerald-400 ring-2 ring-emerald-500 shadow-[0_0_25px_rgba(16,185,129,0.5)] bg-emerald-950/30'
+                            : isSelected
                             ? 'border-rose-500 ring-2 ring-rose-500 shadow-[0_0_20px_rgba(225,29,72,0.4)] bg-rose-950/30'
                             : 'border-rose-950/60 hover:border-rose-700 bg-[#07090e]'
                         }`}
@@ -873,8 +925,9 @@ export const SkinChangerTab: React.FC<SkinChangerTabProps> = ({
 
                           {/* Badges */}
                           {isSaved && (
-                            <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/90 border border-emerald-400 text-[9px] font-bold text-emerald-300 font-rajdhani">
-                              SALVA NA MEMÓRIA
+                            <div className="absolute top-2 left-2 px-2.5 py-1 rounded-md bg-emerald-950/95 border border-emerald-400 text-[10px] font-bold text-emerald-200 font-cinzel flex items-center gap-1 shadow-lg backdrop-blur-sm">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>✓ ATIVA & SALVA</span>
                             </div>
                           )}
 
@@ -888,7 +941,7 @@ export const SkinChangerTab: React.FC<SkinChangerTabProps> = ({
                         {/* Skin Label & Actions */}
                         <div className="p-3 bg-[#07090e] border-t border-rose-950/60 flex items-center justify-between">
                           <div>
-                            <div className="text-xs font-bold text-slate-100 font-cinzel line-clamp-1 group-hover:text-rose-300">
+                            <div className={`text-xs font-bold font-cinzel line-clamp-1 ${isSaved ? 'text-emerald-300' : 'text-slate-100 group-hover:text-rose-300'}`}>
                               {skin.name}
                             </div>
                             <div className="text-[10px] text-slate-400 font-mono mt-0.5">
@@ -904,12 +957,12 @@ export const SkinChangerTab: React.FC<SkinChangerTabProps> = ({
                             }}
                             className={`p-1.5 rounded text-xs font-bold transition-all cursor-pointer ${
                               isSaved
-                                ? 'bg-emerald-600 text-white'
+                                ? 'bg-emerald-500 text-white ring-2 ring-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.8)]'
                                 : isSelected
                                 ? 'bg-rose-600 text-white'
                                 : 'bg-slate-800 text-slate-300 hover:bg-rose-600 hover:text-white'
                             }`}
-                            title="Salvar esta skin na memória"
+                            title={isSaved ? "Skin salva na memória" : "Salvar esta skin na memória"}
                           >
                             <Check className="w-3.5 h-3.5" />
                           </button>
@@ -1225,25 +1278,30 @@ export const SkinChangerTab: React.FC<SkinChangerTabProps> = ({
                       <button
                         key={skin.id || skin.num}
                         onClick={() => handleSaveAndArmSkin(champSelectChamp, skin)}
-                        className={`p-2 rounded-lg border text-left flex flex-col gap-1 transition-all cursor-pointer ${
+                        className={`p-2 rounded-lg border text-left flex flex-col gap-1 transition-all cursor-pointer relative ${
                           isCur
-                            ? 'bg-rose-950/80 border-rose-500 ring-1 ring-rose-500'
+                            ? 'bg-emerald-950/80 border-emerald-400 ring-2 ring-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]'
                             : 'bg-[#07090e] border-rose-950/80 hover:border-rose-700 hover:bg-slate-900'
                         }`}
                       >
-                        <div className="h-14 w-full rounded overflow-hidden bg-black">
+                        <div className="h-14 w-full rounded overflow-hidden bg-black relative">
                           <img
                             src={skin.splashUrl}
                             alt={skin.name}
                             className="w-full h-full object-cover"
                             loading="lazy"
                           />
+                          {isCur && (
+                            <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-emerald-950/95 border border-emerald-400 text-[8px] font-bold text-emerald-300 font-mono">
+                              ✓ ATIVA
+                            </div>
+                          )}
                         </div>
-                        <div className="text-[11px] font-bold text-white font-cinzel line-clamp-1">
+                        <div className={`text-[11px] font-bold font-cinzel line-clamp-1 ${isCur ? 'text-emerald-300' : 'text-white'}`}>
                           {skin.name}
                         </div>
-                        <div className="text-[9px] font-mono text-slate-400">
-                          {isCur ? '✓ Ativa' : 'Selecionar'}
+                        <div className={`text-[9px] font-mono ${isCur ? 'text-emerald-400 font-bold' : 'text-slate-400'}`}>
+                          {isCur ? '✓ Selecionada no LoL' : 'Clique p/ Selecionar'}
                         </div>
                       </button>
                     );
