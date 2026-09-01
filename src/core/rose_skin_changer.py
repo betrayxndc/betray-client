@@ -8,35 +8,37 @@ class RoseSkinChanger:
     Gerencia skins personalizadas, armamento na memória, persistência em disco
     e injeção multi-vetor através da LCU (League Client Update API).
     """
-    def __init__(self, lcu_client, settings):
+    def __init__(self, lcu_client, settings=None):
         self.lcu = lcu_client
-        self.settings = settings
+        self.settings = settings if settings is not None else {}
         self.active_skins = {}
         self.last_applied_skin_per_champ = {}
 
-        # Carrega skins pré-configuradas do arquivo settings.json
+        # Carrega skins pré-configuradas
         saved_skins = (
             self.settings.get("rose_selected_skins") or 
             self.settings.get("roseSelectedSkins") or 
             {}
         )
-        for key, data in saved_skins.items():
-            if isinstance(data, dict) and data.get("skinId"):
-                try:
-                    c_id = int(data.get("skinId")) // 1000
-                    self.active_skins[c_id] = {
-                        "skin_id": int(data.get("skinId")),
-                        "chroma_id": data.get("chromaId"),
-                        "skin_name": data.get("skinName", ""),
-                        "skin_num": data.get("skinNum", 0)
-                    }
-                except Exception:
-                    pass
+        if isinstance(saved_skins, dict):
+            for key, data in saved_skins.items():
+                if isinstance(data, dict) and data.get("skinId"):
+                    try:
+                        c_id = int(data.get("skinId")) // 1000
+                        self.active_skins[c_id] = {
+                            "skin_id": int(data.get("skinId")),
+                            "chroma_id": data.get("chromaId"),
+                            "skin_name": data.get("skinName", ""),
+                            "skin_num": data.get("skinNum", 0)
+                        }
+                    except Exception:
+                        pass
 
     def is_enabled(self):
         return bool(
             self.settings.get("rose_skin_changer_enabled", True) and 
-            self.settings.get("roseSkinChangerEnabled", True)
+            self.settings.get("roseSkinChangerEnabled", True) and
+            self.settings.get("roseChangerEnabled", True)
         )
 
     def toggle(self, enabled=None):
@@ -44,6 +46,7 @@ class RoseSkinChanger:
             enabled = not self.is_enabled()
         self.settings["rose_skin_changer_enabled"] = bool(enabled)
         self.settings["roseSkinChangerEnabled"] = bool(enabled)
+        self.settings["roseChangerEnabled"] = bool(enabled)
         return {
             "success": True,
             "enabled": bool(enabled),
@@ -212,7 +215,7 @@ class RoseSkinChanger:
     def apply_skin_to_lcu(self, champ_id, skin_id, chroma_id=None):
         """
         Dispara a injeção da skin através de múltiplos vetores da API oficial da LCU:
-        1. /lol-champ-select/v1/session/my-selection (PATCH - Seleção oficial do carrossel de skins)
+        1. /lol-champ-select/v1/session/my-selection (PATCH)
         2. /lol-champ-select/v1/current-champion (PATCH)
         3. /lol-champ-select/v1/skin-carousel/skins/{id}/select (POST direto no carrossel)
         4. /lol-champ-select/v1/skin-selector (PATCH)
@@ -223,7 +226,7 @@ class RoseSkinChanger:
         champ_id = int(champ_id)
         success = False
 
-        # Vetor 1: Seleção em tempo real de Champ Select (Skin Carousel)
+        # Vetor 1: Seleção em tempo real de Champ Select
         try:
             res1 = self.lcu.patch("/lol-champ-select/v1/session/my-selection", {
                 "selectedSkinId": target_skin_id
@@ -260,7 +263,7 @@ class RoseSkinChanger:
         except Exception:
             pass
 
-        # Vetor 5: Loadouts V4 (persiste cosméticos do inventário do cliente)
+        # Vetor 5: Loadouts V4 (persiste cosméticos)
         try:
             loadout_res = self.lcu.get("/lol-loadouts/v4/loadouts/scope/inventory")
             if loadout_res and loadout_res.status_code == 200:
@@ -293,12 +296,15 @@ class RoseSkinChanger:
         self.last_applied_skin_per_champ[champ_id] = target_skin_id
         return success
 
+    def tick(self, settings=None, session_data=None):
+        if settings is not None:
+            self.settings = settings
+        if session_data is None:
+            session_data = self.lcu.get_champ_select_session()
+        if session_data:
+            self.check_and_apply_champ_select(session_data)
+
     def check_and_apply_champ_select(self, session_data):
-        """
-        Monitor de Champ Select: Detecta quando um campeão foi escolhido, hovered ou bloqueado,
-        identifica a fase (incluindo FINALIZATION / Seleção de Skins) e garante a seleção
-        automática da skin e chroma configurados no Betray Client.
-        """
         if not self.is_enabled():
             return False
 
@@ -335,14 +341,13 @@ class RoseSkinChanger:
 
         skin_id = configured_skin.get("skin_id")
         chroma_id = configured_skin.get("chroma_id")
-        skin_name = configured_skin.get("skin_name", f"Skin #{skin_id}")
         target_skin_id = int(chroma_id) if chroma_id else int(skin_id)
 
         timer = session_data.get("timer", {})
         phase = timer.get("phase", "")
         current_selected = my_player.get("selectedSkinId", 0)
 
-        # Na fase FINALIZATION (carrossel de skins) ou se a skin atual no cliente for diferente da configurada:
+        # Na fase FINALIZATION (carrossel de skins) ou se a skin atual no cliente for diferente:
         is_finalization = (phase == "FINALIZATION")
         needs_apply = (current_selected != target_skin_id) or (self.last_applied_skin_per_champ.get(champ_id) != target_skin_id)
 
@@ -354,23 +359,3 @@ class RoseSkinChanger:
             return applied
 
         return True
-
-    def fetch_lcu_champion_skins(self, champ_id):
-        """Busca catálogo de skins direto da API interna da LCU."""
-        champ_id = int(champ_id)
-        res = self.lcu.get(f"/lol-game-data/assets/v1/champions/{champ_id}.json")
-        if res and res.status_code == 200:
-            data = res.json()
-            return {
-                "success": True,
-                "skins": data.get("skins", []),
-                "name": data.get("name", "")
-            }
-        return {"success": False, "skins": []}
-
-    def check_and_apply_in_game(self):
-        """Garante aplicação da skin na inicialização de partida."""
-        if not self.is_enabled():
-            return
-        for champ_id, skin_data in self.active_skins.items():
-            self.apply_skin_to_lcu(champ_id, skin_data.get("skin_id"), skin_data.get("chroma_id"))

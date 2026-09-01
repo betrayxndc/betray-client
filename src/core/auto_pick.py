@@ -1,9 +1,9 @@
 import time
 
 class AutoPickHandler:
-    def __init__(self, lcu_client, settings):
+    def __init__(self, lcu_client, settings=None):
         self.lcu = lcu_client
-        self.settings = settings
+        self.settings = settings if settings is not None else {}
         self.last_locked_action_id = None
 
     def get_assigned_role(self, session_data):
@@ -44,6 +44,12 @@ class AutoPickHandler:
             self.settings.get("auto_pick_enabled", True) and
             self.settings.get("autoPickEnabled", True)
         )
+
+    def tick(self, session_data=None):
+        if session_data is None:
+            session_data = self.lcu.get_champ_select_session()
+        if session_data:
+            self.check_and_act(session_data)
 
     def check_and_act(self, session_data):
         if not self.settings.get("auto_pick_enabled", True) and not self.settings.get("autoPickEnabled", True):

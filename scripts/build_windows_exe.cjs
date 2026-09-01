@@ -2,15 +2,17 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-function escapeCString(str) {
-  return JSON.stringify(str);
-}
-
 function buildLauncher() {
   console.log('[*] Compilando BetrayClient.exe nativo e auto-contido para Windows...');
 
-  // 1. Carregar arquivos do projeto
+  // 1. Carregar arquivos do projeto diretamente do disco
   const filesToEmbed = {};
+
+  // Package inits
+  filesToEmbed['src/__init__.py'] = fs.readFileSync(path.join(__dirname, '../src/__init__.py'), 'utf-8');
+  filesToEmbed['src/api/__init__.py'] = fs.readFileSync(path.join(__dirname, '../src/api/__init__.py'), 'utf-8');
+  filesToEmbed['src/api/lcu_client.py'] = fs.readFileSync(path.join(__dirname, '../src/api/lcu_client.py'), 'utf-8');
+  filesToEmbed['src/core/__init__.py'] = fs.readFileSync(path.join(__dirname, '../src/core/__init__.py'), 'utf-8');
 
   // Core files
   const coreDir = path.join(__dirname, '../src/core');
@@ -23,102 +25,6 @@ function buildLauncher() {
     }
   }
 
-  // LCU Client
-  filesToEmbed['src/api/lcu_client.py'] = `"""
-LCU Client - API de comunicacao com a League Client Update API
-"""
-import os
-import ssl
-import json
-import base64
-import urllib3
-import requests
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-class LCUClient:
-    def __init__(self):
-        self.port = None
-        self.auth_token = None
-        self.protocol = "https"
-        self.host = "127.0.0.1"
-        self.session = requests.Session()
-        self.session.verify = False
-
-    def is_connected(self):
-        return self.port is not None and self.auth_token is not None
-
-    def connect_with_credentials(self, port, auth_token):
-        self.port = int(port)
-        self.auth_token = str(auth_token)
-        self.session.headers.update({
-            "Authorization": f"Basic {self.auth_token}",
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-        })
-        return True
-
-    def find_and_connect(self):
-        try:
-            import psutil
-            for proc in psutil.process_iter(['name', 'cmdline']):
-                try:
-                    name = proc.info.get('name') or ''
-                    if 'LeagueClientUx' in name or 'LeagueClient' in name:
-                        cmdline = proc.info.get('cmdline') or []
-                        port = None
-                        token = None
-                        for arg in cmdline:
-                            if arg.startswith('--app-port='):
-                                port = arg.split('=')[1]
-                            elif arg.startswith('--remoting-auth-token='):
-                                token = arg.split('=')[1]
-                        if port and token:
-                            b64_auth = base64.b64encode(f"riot:{token}".encode('utf-8')).decode('utf-8')
-                            return self.connect_with_credentials(port, b64_auth)
-                except Exception:
-                    continue
-        except Exception:
-            pass
-        return False
-
-    def request(self, method, endpoint, data=None):
-        if not self.is_connected():
-            if not self.find_and_connect():
-                return None
-        url = f"{self.protocol}://{self.host}:{self.port}{endpoint}"
-        try:
-            if data is not None:
-                if isinstance(data, (dict, list)):
-                    data = json.dumps(data)
-                res = self.session.request(method, url, data=data, timeout=5)
-            else:
-                res = self.session.request(method, url, timeout=5)
-            if res.status_code in [200, 201, 204]:
-                try:
-                    return res.json()
-                except Exception:
-                    return res.text or True
-            return None
-        except Exception:
-            return None
-
-    def get(self, endpoint):
-        return self.request("GET", endpoint)
-
-    def post(self, endpoint, data=None):
-        return self.request("POST", endpoint, data)
-
-    def put(self, endpoint, data=None):
-        return self.request("PUT", endpoint, data)
-
-    def delete(self, endpoint):
-        return self.request("DELETE", endpoint)
-
-    def patch(self, endpoint, data=None):
-        return self.request("PATCH", endpoint, data)
-`;
-
   // Requirements
   filesToEmbed['requirements.txt'] = `requests>=2.28.0
 urllib3>=1.26.0
@@ -128,12 +34,27 @@ websockets>=11.0.0
 rich>=13.0.0
 `;
 
-  // main.py
+  // Default settings.json
+  filesToEmbed['config/settings.json'] = `{
+  "auto_accept": true,
+  "auto_accept_delay": 1,
+  "auto_pick_enabled": true,
+  "auto_lock_pick": true,
+  "auto_ban_enabled": true,
+  "rose_skin_changer_enabled": true,
+  "pre_pick_champions": { "TOP": [], "JUNGLE": [], "MID": [], "ADC": [], "SUPPORT": [] },
+  "pre_ban_champions": [],
+  "rose_selected_skins": {},
+  "last_second_dodge_enabled": false,
+  "last_second_dodge_seconds": 3
+}`;
+
+  // Robust main.py
   filesToEmbed['main.py'] = `"""
 ===================================================================
  Betray Client - Desktop Application (Windows Standalone)
  Feito por: betray
- Automatizador de Fila, Pré-Pick, Pré-Ban, Skin Changer e Lobby Reveal
+ Auto-Accept | Rose Skin Changer | Auto-Pick/Ban | Lobby Reveal
 ===================================================================
 """
 import sys
@@ -144,6 +65,11 @@ import threading
 import webbrowser
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 import socketserver
+
+# Adiciona o diretorio base ao sys.path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
 try:
     import webview
@@ -157,25 +83,41 @@ from src.core.auto_pick import AutoPickHandler
 from src.core.auto_ban import AutoBanHandler
 from src.core.background_changer import BackgroundChanger
 from src.core.rose_skin_changer import RoseSkinChanger
-try:
-    from src.core.lobby_reveal import LobbyRevealHandler
-except ImportError:
-    from src.core.lobby_reveal import LobbyRevealer as LobbyRevealHandler
+from src.core.lobby_reveal import LobbyRevealer, LobbyRevealHandler
 from src.core.dodge_handler import DodgeHandler
 
 PORT = 3000
-SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "config", "settings.json")
+SETTINGS_FILE = os.path.join(BASE_DIR, "config", "settings.json")
+
+# Instancias globais dos controladores
+lcu = LCUClient()
+settings_data = {}
 
 def load_settings():
+    global settings_data
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                settings_data = json.load(f)
+                return settings_data
         except Exception:
             pass
-    return {}
+    settings_data = {
+        "auto_accept": True,
+        "auto_accept_delay": 1,
+        "auto_pick_enabled": True,
+        "auto_lock_pick": True,
+        "auto_ban_enabled": True,
+        "rose_skin_changer_enabled": True,
+        "pre_pick_champions": { "TOP": [], "JUNGLE": [], "MID": [], "ADC": [], "SUPPORT": [] },
+        "pre_ban_champions": [],
+        "rose_selected_skins": {}
+    }
+    return settings_data
 
 def save_settings(data):
+    global settings_data
+    settings_data = data
     try:
         os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
@@ -183,20 +125,36 @@ def save_settings(data):
     except Exception:
         pass
 
+# Inicializa controladores
+settings_data = load_settings()
+auto_accept = AutoAcceptHandler(lcu, settings_data)
+auto_pick = AutoPickHandler(lcu, settings_data)
+auto_ban = AutoBanHandler(lcu, settings_data)
+rose_skins = RoseSkinChanger(lcu, settings_data)
+lobby_reveal = LobbyRevealer(lcu, settings_data)
+dodge_engine = DodgeHandler(lcu, settings_data)
+bg_changer = BackgroundChanger(lcu, settings_data)
+
 class CustomHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        web_dir = os.path.join(os.path.dirname(__file__), "web")
+        web_dir = os.path.join(BASE_DIR, "web")
         super().__init__(*args, directory=web_dir, **kwargs)
 
     def log_message(self, format, *args):
         pass
 
     def do_GET(self):
-        if self.path == "/api/status":
+        if self.path == "/api/status" or self.path == "/api/lcu_status":
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps({"status": "running", "client": "BetrayClient"}).encode('utf-8'))
+            status = {
+                "connected": lcu.is_connected(),
+                "port": lcu.port,
+                "phase": lcu.get_gameflow_phase(),
+                "client": "BetrayClient v2.4.0"
+            }
+            self.wfile.write(json.dumps(status).encode('utf-8'))
             return
         elif self.path == "/api/settings":
             self.send_response(200)
@@ -204,60 +162,116 @@ class CustomHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(load_settings()).encode('utf-8'))
             return
+        elif self.path == "/api/reveal":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            data = lobby_reveal.reveal_lobby()
+            self.wfile.write(json.dumps(data).encode('utf-8'))
+            return
+        elif self.path == "/api/summoner":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            summ = lcu.get_current_summoner()
+            ranked = lcu.get_ranked_stats()
+            self.wfile.write(json.dumps({"success": summ is not None, "summoner": summ, "ranked": ranked}).encode('utf-8'))
+            return
         super().do_GET()
 
     def do_POST(self):
+        content_length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(content_length).decode('utf-8') if content_length > 0 else "{}"
+        try:
+            payload = json.loads(body)
+        except Exception:
+            payload = {}
+
         if self.path == "/api/settings":
-            content_length = int(self.headers.get('Content-Length', 0))
-            body = self.rfile.read(content_length).decode('utf-8')
-            try:
-                data = json.loads(body)
-                save_settings(data)
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True}).encode('utf-8'))
-            except Exception as e:
-                self.send_response(400)
-                self.end_headers()
+            save_settings(payload)
+            # Atualiza referencias de settings em todos os handlers
+            auto_accept.settings = payload
+            auto_pick.settings = payload
+            auto_ban.settings = payload
+            rose_skins.settings = payload
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True}).encode('utf-8'))
             return
+        elif self.path == "/api/dodge":
+            method = payload.get("method", "auto")
+            res = dodge_engine.dodge(method)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(res).encode('utf-8'))
+            return
+        elif self.path == "/api/rose_skin":
+            champ_id = payload.get("champId")
+            skin_id = payload.get("skinId")
+            chroma_id = payload.get("chromaId")
+            skin_name = payload.get("skinName", "")
+            res = rose_skins.set_skin(champ_id, skin_id, chroma_id, skin_name)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(res).encode('utf-8'))
+            return
+        elif self.path == "/api/background_skin":
+            skin_id = payload.get("skinId")
+            res = bg_changer.set_background(skin_id)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": res}).encode('utf-8'))
+            return
+
         super().do_POST()
 
 def start_server():
     socketserver.TCPServer.allow_reuse_address = True
-    httpd = socketserver.TCPServer(("127.0.0.1", PORT), CustomHandler)
-    httpd.serve_forever()
+    try:
+        httpd = socketserver.TCPServer(("127.0.0.1", PORT), CustomHandler)
+        httpd.serve_forever()
+    except Exception as e:
+        print(f"[!] Erro ao iniciar servidor HTTP: {e}")
 
 def start_lcu_worker():
-    lcu = LCUClient()
-    skin_changer = RoseSkinChanger(lcu)
-    auto_accept = AutoAcceptHandler(lcu)
-    auto_pick = AutoPickHandler(lcu)
-    auto_ban = AutoBanHandler(lcu)
-    lobby_reveal = LobbyRevealHandler(lcu)
-    dodge = DodgeHandler(lcu)
-
     print("[+] Betray Client Worker LCU iniciado em segundo plano.")
     while True:
         try:
-            settings = load_settings()
             if not lcu.is_connected():
                 lcu.find_and_connect()
             
             if lcu.is_connected():
-                if settings.get("autoAcceptEnabled", False):
-                    auto_accept.check_and_accept(settings.get("autoAcceptDelay", 0))
-                if settings.get("roseChangerEnabled", True):
-                    skin_changer.tick(settings)
-            time.sleep(1.0)
+                st = load_settings()
+                phase = lcu.get_gameflow_phase()
+
+                # 1. Auto-Accept
+                if st.get("auto_accept", True) and phase == "ReadyCheck":
+                    auto_accept.check_and_accept()
+
+                # 2. Champ Select Handling (Auto-Pick, Auto-Ban, Skin Injection)
+                if phase == "ChampSelect":
+                    session = lcu.get_champ_select_session()
+                    if session:
+                        if st.get("auto_pick_enabled", True):
+                            auto_pick.check_and_act(session)
+                        if st.get("auto_ban_enabled", True):
+                            auto_ban.check_and_act(session)
+                        if st.get("rose_skin_changer_enabled", True):
+                            rose_skins.check_and_apply_champ_select(session)
+
+            time.sleep(0.8)
         except Exception:
-            time.sleep(2.0)
+            time.sleep(1.5)
 
 def main():
     print("=" * 65)
     print("       BETRAY CLIENT v2.4.0 - LEAGUE OF LEGENDS SUITE")
     print("       Auto-Accept | Rose Skin Changer | Lobby Reveal")
-    print("=" * 65)
+    print("===================================================================")
     
     server_thread = threading.Thread(target=start_server, daemon=True)
     server_thread.start()
@@ -265,11 +279,11 @@ def main():
     worker_thread = threading.Thread(target=start_lcu_worker, daemon=True)
     worker_thread.start()
 
-    time.sleep(0.5)
+    time.sleep(0.4)
     url = f"http://127.0.0.1:{PORT}"
-    print(f"[*] Abrindo interface gráfica do Betray Client: {url}")
+    print(f"[*] Abrindo interface do Betray Client: {url}")
     
-    # Try webview, otherwise browser
+    # Inicia com pywebview se disponivel, ou abre no Edge / Chrome / Browser
     if HAS_WEBVIEW:
         try:
             webview.create_window(
@@ -286,7 +300,6 @@ def main():
         except Exception:
             pass
             
-    # Fallback to Edge app mode or browser
     os.system(f'start msedge.exe --app="{url}" --window-size=1280,820 2>nul || start {url}')
     while True:
         time.sleep(1)
@@ -301,11 +314,11 @@ if __name__ == "__main__":
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Betray Client</title>
+  <title>Betray Client v2.4.0</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Rajdhani', sans-serif; background-color: #07090e; color: #f8fafc; }
+    body { font-family: 'Rajdhani', sans-serif; background-color: #07090e; color: #f8fafc; user-select: none; }
     .font-cinzel { font-family: 'Cinzel', serif; }
     .font-mono { font-family: 'JetBrains Mono', monospace; }
   </style>
@@ -313,41 +326,98 @@ if __name__ == "__main__":
 <body class="min-h-screen flex flex-col justify-between bg-[#07090e] text-white">
   <header class="p-4 border-b border-rose-950/80 bg-black/60 flex items-center justify-between">
     <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded-lg bg-rose-600 flex items-center justify-center font-cinzel font-black text-white">B</div>
-      <h1 class="font-cinzel font-black tracking-wider text-lg">BETRAY <span class="text-rose-500">CLIENT</span></h1>
-    </div>
-    <div class="flex items-center gap-2 px-3 py-1 rounded bg-emerald-950 border border-emerald-500/60 text-xs font-mono text-emerald-300">
-      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-      <span>LCU MOTOR ATIVO</span>
-    </div>
-  </header>
-  <main class="flex-1 max-w-5xl mx-auto p-6 flex flex-col items-center justify-center text-center space-y-6">
-    <div class="p-6 rounded-2xl bg-[#0d1017] border border-rose-800/40 shadow-2xl max-w-2xl w-full">
-      <div class="text-rose-500 font-cinzel text-2xl font-bold mb-2">🌸 ROSE SKIN CHANGER & SUITE ATIVA</div>
-      <p class="text-sm text-slate-300 mb-6">Todas as automações e o injetor de skins estão sincronizados diretamente com seu cliente do League of Legends.</p>
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
-        <div class="p-3 rounded-lg bg-black/40 border border-rose-950">
-          <div class="text-[10px] font-mono text-rose-400">STATUS</div>
-          <div class="text-xs font-bold text-emerald-400">✓ Conectado</div>
-        </div>
-        <div class="p-3 rounded-lg bg-black/40 border border-rose-950">
-          <div class="text-[10px] font-mono text-rose-400">AUTO-ACCEPT</div>
-          <div class="text-xs font-bold text-emerald-400">✓ Ativo (0s)</div>
-        </div>
-        <div class="p-3 rounded-lg bg-black/40 border border-rose-950">
-          <div class="text-[10px] font-mono text-rose-400">SKIN CHANGER</div>
-          <div class="text-xs font-bold text-emerald-400">✓ Armado</div>
-        </div>
-        <div class="p-3 rounded-lg bg-black/40 border border-rose-950">
-          <div class="text-[10px] font-mono text-rose-400">LOBBY REVEAL</div>
-          <div class="text-xs font-bold text-emerald-400">✓ steele123</div>
-        </div>
+      <div class="w-9 h-9 rounded-lg bg-rose-600 flex items-center justify-center font-cinzel font-black text-white shadow-[0_0_15px_rgba(225,29,72,0.6)]">B</div>
+      <div>
+        <h1 class="font-cinzel font-black tracking-wider text-lg leading-none">BETRAY <span class="text-rose-500">CLIENT</span></h1>
+        <span class="text-[9px] font-mono text-slate-400">Desktop Suite • v2.4.0</span>
       </div>
     </div>
+    <div class="flex items-center gap-2 px-3 py-1.5 rounded bg-emerald-950/90 border border-emerald-500/60 text-xs font-mono text-emerald-300">
+      <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span id="header-status">LCU CONECTADO (127.0.0.1:3000)</span>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-5xl mx-auto p-6 flex flex-col items-center justify-center text-center space-y-6">
+    <div class="p-8 rounded-2xl bg-[#0d1017] border border-rose-800/40 shadow-2xl max-w-3xl w-full">
+      <div class="text-rose-500 font-cinzel text-3xl font-bold mb-2">🌸 ROSE SKIN CHANGER & UTILITY SUITE</div>
+      <p class="text-sm text-slate-300 mb-8 max-w-xl mx-auto">O Betray Client está ativo em segundo plano e sincronizado diretamente com o cliente do League of Legends.</p>
+      
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
+        <div class="p-4 rounded-xl bg-black/60 border border-rose-950/80 shadow">
+          <div class="text-[10px] font-mono text-rose-400 font-bold uppercase">STATUS LCU</div>
+          <div class="text-sm font-bold text-emerald-400 mt-1">✓ Conectado</div>
+        </div>
+        <div class="p-4 rounded-xl bg-black/60 border border-rose-950/80 shadow">
+          <div class="text-[10px] font-mono text-rose-400 font-bold uppercase">AUTO-ACCEPT</div>
+          <div class="text-sm font-bold text-emerald-400 mt-1">✓ Ativo (1s)</div>
+        </div>
+        <div class="p-4 rounded-xl bg-black/60 border border-rose-950/80 shadow">
+          <div class="text-[10px] font-mono text-rose-400 font-bold uppercase">SKIN CHANGER</div>
+          <div class="text-sm font-bold text-emerald-400 mt-1">✓ Rose Engine</div>
+        </div>
+        <div class="p-4 rounded-xl bg-black/60 border border-rose-950/80 shadow">
+          <div class="text-[10px] font-mono text-rose-400 font-bold uppercase">LOBBY REVEAL</div>
+          <div class="text-sm font-bold text-emerald-400 mt-1">✓ steele123</div>
+        </div>
+      </div>
+
+      <div class="mt-8 pt-6 border-t border-rose-950/60 flex flex-wrap items-center justify-center gap-4">
+        <button onclick="triggerDodge()" class="px-5 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-cinzel font-bold text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(225,29,72,0.4)] cursor-pointer">
+          🚪 Executar Dodge Rápido
+        </button>
+        <button onclick="fetchReveal()" class="px-5 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-black font-cinzel font-bold text-xs uppercase tracking-wider shadow cursor-pointer">
+          🔍 Escanear Lobby (Revelar Nomes)
+        </button>
+      </div>
+
+      <div id="action-feedback" class="mt-4 text-xs font-mono text-slate-400 min-h-[1.5rem]"></div>
+    </div>
   </main>
+
   <footer class="p-4 text-center text-xs text-slate-500 border-t border-rose-950/60 font-mono">
-    Betray Client v2.4.0 — Standalone Native Desktop Edition
+    Betray Client v2.4.0 — Standalone Native Desktop Edition • Feito por betray
   </footer>
+
+  <script>
+    function triggerDodge() {
+      const fb = document.getElementById('action-feedback');
+      fb.innerText = 'Enviando comando de Dodge...';
+      fetch('/api/dodge', { method: 'POST', body: JSON.stringify({ method: 'auto' }), headers: { 'Content-Type': 'application/json' } })
+        .then(r => r.json())
+        .then(d => { fb.innerText = '✓ ' + (d.message || 'Dodge executado!'); })
+        .catch(e => { fb.innerText = '✕ Erro ao executar dodge.'; });
+    }
+
+    function fetchReveal() {
+      const fb = document.getElementById('action-feedback');
+      fb.innerText = 'Buscando participantes do Champ Select...';
+      fetch('/api/reveal')
+        .then(r => r.json())
+        .then(d => {
+          if (d.participants && d.participants.length > 0) {
+            fb.innerText = '✓ ' + d.participants.length + ' jogadores identificados no lobby!';
+          } else {
+            fb.innerText = 'Aguardando entrada em uma sala de Champ Select...';
+          }
+        })
+        .catch(e => { fb.innerText = '✕ Erro ao escanear lobby.'; });
+    }
+
+    setInterval(() => {
+      fetch('/api/status')
+        .then(r => r.json())
+        .then(s => {
+          const el = document.getElementById('header-status');
+          if (s.connected) {
+            el.innerText = 'LCU: Conectado • Fase: ' + s.phase;
+          } else {
+            el.innerText = 'Aguardando League of Legends...';
+          }
+        })
+        .catch(() => {});
+    }, 2500);
+  </script>
 </body>
 </html>`;
 
@@ -407,8 +477,17 @@ void create_directories_for_file(const char* full_path) {
 }
 
 int extract_files(const char* base_dir) {
-    printf("[*] Extraindo arquivos da suite Betray Client para: %s\\n", base_dir);
+    printf("[*] Extraindo suite Betray Client para: %s\\n", base_dir);
     _mkdir(base_dir);
+
+    // Limpa __pycache__ e arquivos bytecode antigos para evitar conflitos de cache
+    char pycache_cmd[MAX_PATH + 64];
+    snprintf(pycache_cmd, sizeof(pycache_cmd), "rmdir /s /q \\"%s\\\\__pycache__\\" >nul 2>&1", base_dir);
+    system(pycache_cmd);
+    snprintf(pycache_cmd, sizeof(pycache_cmd), "rmdir /s /q \\"%s\\\\src\\\\core\\\\__pycache__\\" >nul 2>&1", base_dir);
+    system(pycache_cmd);
+    snprintf(pycache_cmd, sizeof(pycache_cmd), "rmdir /s /q \\"%s\\\\src\\\\api\\\\__pycache__\\" >nul 2>&1", base_dir);
+    system(pycache_cmd);
 
     for (int i = 0; i < NUM_EMBEDDED_FILES; i++) {
         char full_path[MAX_PATH];
@@ -468,7 +547,6 @@ void install_embedded_python(const char* base_dir) {
 }
 
 int main(int argc, char* argv[]) {
-    // Configurar console UTF-8
     SetConsoleOutputCP(65001);
     SetConsoleTitleA("Betray Client v2.4.0 - League of Legends Suite");
 
@@ -485,7 +563,7 @@ int main(int argc, char* argv[]) {
     char base_dir[MAX_PATH];
     snprintf(base_dir, sizeof(base_dir), "%s\\\\BetrayClient", appdata);
 
-    // 1. Extrair todos os arquivos embutidos
+    // 1. Extrair e atualizar todos os arquivos embutidos
     extract_files(base_dir);
 
     // 2. Verificar Python
@@ -510,7 +588,6 @@ int main(int argc, char* argv[]) {
         system("py -3 -m pip install -q --no-warn-script-location -r requirements.txt");
         snprintf(run_cmd, sizeof(run_cmd), "py -3 main.py");
     } else {
-        // Baixa e instala automaticamente!
         install_embedded_python(base_dir);
         snprintf(run_cmd, sizeof(run_cmd), "\\"%s\\" main.py", py_exe);
     }
@@ -518,7 +595,6 @@ int main(int argc, char* argv[]) {
     printf("\\n[*] Iniciando o Betray Client e conectando a LCU do League of Legends...\\n");
     printf("[*] Interface grafica sendo inicializada...\\n\\n");
 
-    // Executa main.py
     int exit_code = system(run_cmd);
     if (exit_code != 0) {
         printf("\\n[!] O processo foi finalizado com codigo %d.\\n", exit_code);

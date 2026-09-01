@@ -1,259 +1,176 @@
 import os
-import re
-import time
-import requests
+import sys
 import json
+import base64
+import urllib3
+import requests
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class LobbyRevealer:
-    def __init__(self, lcu_client):
+    """
+    Módulo Lobby Reveal (steele123/reveal)
+    Identifica os participantes do Lobby / Champ Select de Solo/Duo através do chat da LCU.
+    """
+    def __init__(self, lcu_client, settings=None):
         self.lcu = lcu_client
-        self.cached_lobby = []
+        self.settings = settings if settings is not None else {}
+        self.revealed_players = []
+
+    def get_champ_select_session(self):
+        res = self.lcu.get("/lol-champ-select/v1/session")
+        if res and res.status_code == 200:
+            return res.json()
+        return None
+
+    def get_chat_conversations(self):
+        res = self.lcu.get("/lol-chat/v1/conversations")
+        if res and res.status_code == 200:
+            return res.json()
+        return []
+
+    def get_conversation_messages(self, conversation_id):
+        res = self.lcu.get(f"/lol-chat/v1/conversations/{conversation_id}/messages")
+        if res and res.status_code == 200:
+            return res.json()
+        return []
 
     def get_summoner_by_puuid(self, puuid):
-        if not puuid:
-            return {}
-        
-        # Tentativa 1: Endpoint de summoner v2 por PUUID
         res = self.lcu.get(f"/lol-summoner/v2/summoners/puuid/{puuid}")
         if res and res.status_code == 200:
             return res.json()
+        return None
 
-        # Tentativa 2: Endpoint v1 summoner por PUUID
-        res = self.lcu.get(f"/lol-summoner/v1/summoners/by-puuid/{puuid}")
-        if res and res.status_code == 200:
-            return res.json()
-
-        # Tentativa 3: Chat alias
-        res = self.lcu.get(f"/lol-chat/v1/conversations/active/participants")
-        if res and res.status_code == 200:
-            data = res.json()
-            if isinstance(data, list):
-                for p in data:
-                    if p.get("puuid") == puuid or p.get("id") == puuid:
-                        return p
-        return {}
-
-    def get_summoner_ranked_stats(self, puuid):
-        if not puuid:
-            return {}
-        
-        # Tentativa 1: Ranked stats por PUUID
+    def get_ranked_stats_by_puuid(self, puuid):
         res = self.lcu.get(f"/lol-ranked/v1/ranked-stats/{puuid}")
         if res and res.status_code == 200:
             return res.json()
+        return None
 
-        # Tentativa 2: Endpoint alternativo de ranked
-        res = self.lcu.get(f"/lol-ranked/v1/signed-ranked-stats")
-        if res and res.status_code == 200:
-            return res.json()
+    def scan(self):
+        return self.reveal_lobby()
 
-        return {}
+    def get_participants(self):
+        return self.reveal_lobby()
 
-    def get_summoner_match_history(self, puuid):
-        if not puuid:
-            return []
-        
-        # Busca os ultimos jogos para calcular streaks reais de vitoria/derrota
-        res = self.lcu.get(f"/lol-match-history/v1/products/lol/{puuid}/matches?begIndex=0&endIndex=5")
-        if res and res.status_code == 200:
-            data = res.json()
-            games = data.get("games", {}).get("games", [])
-            return games
-        return []
+    def reveal_lobby(self):
+        conversations = self.get_chat_conversations()
+        champ_select_conv = None
 
-    def reveal_current_lobby(self):
-        # 1. Busca participantes na conversa do Champ Select (steele123/reveal)
-        endpoints = [
-            "/chat/v5/participants/champ-select",
-            "/lol-chat/v1/conversations/active/participants",
-            "/lol-champ-select/v1/session"
-        ]
-
-        raw_participants = []
-        is_champ_select_session = False
-        champ_select_session_data = None
-
-        for ep in endpoints:
-            res = self.lcu.get(ep)
-            if res and res.status_code == 200:
-                data = res.json()
-                if ep == "/chat/v5/participants/champ-select":
-                    if isinstance(data, dict) and "participants" in data and len(data["participants"]) > 0:
-                        raw_participants = data["participants"]
-                        break
-                elif ep == "/lol-champ-select/v1/session":
-                    champ_select_session_data = data
-                    my_team = data.get("myTeam", [])
-                    if len(my_team) > 0:
-                        raw_participants = my_team
-                        is_champ_select_session = True
-                        break
-                elif isinstance(data, list) and len(data) > 0:
-                    raw_participants = data
-                    break
-
-        if not raw_participants:
-            # Fallback para tentar listar conversas ativas
-            conv_res = self.lcu.get("/lol-chat/v1/conversations")
-            if conv_res and conv_res.status_code == 200:
-                convs = conv_res.json()
-                if isinstance(convs, list):
-                    for c in convs:
-                        c_type = c.get("type", "")
-                        if "champ-select" in c_type or "custom" in c_type:
-                            c_id = c.get("id")
-                            p_res = self.lcu.get(f"/lol-chat/v1/conversations/{c_id}/participants")
-                            if p_res and p_res.status_code == 200:
-                                raw_participants = p_res.json()
-                                break
+        for conv in conversations:
+            c_type = conv.get("type", "")
+            c_id = conv.get("id", "")
+            if "champion-select" in c_type or "champ-select" in c_id or "champ-select" in c_type:
+                champ_select_conv = conv
+                break
 
         revealed_players = []
-        roles_order = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"]
+        seen_puuids = set()
 
-        for idx, p in enumerate(raw_participants):
-            puuid = (
-                p.get("puuid") or 
-                p.get("cid", "").split("@")[0] or 
-                p.get("id") or 
-                ""
-            )
-            
-            game_name = (
-                p.get("game_name") or 
-                p.get("name") or 
-                p.get("gameName") or 
-                p.get("displayName") or 
-                f"Invocador {idx + 1}"
-            )
-            
-            tag_line = (
-                p.get("game_tag") or 
-                p.get("tagLine") or 
-                p.get("tag") or 
-                "BR1"
-            )
+        if champ_select_conv:
+            c_id = champ_select_conv.get("id")
+            messages = self.get_conversation_messages(c_id)
+            for msg in messages:
+                from_id = msg.get("fromId")
+                from_sum_id = msg.get("fromSummonerId")
+                body = msg.get("body", "")
+                
+                puuid = None
+                if from_id and len(str(from_id)) > 20:
+                    puuid = from_id
+                
+                if puuid and puuid not in seen_puuids:
+                    seen_puuids.add(puuid)
+                    summoner = self.get_summoner_by_puuid(puuid)
+                    if summoner:
+                        game_name = summoner.get("gameName") or summoner.get("displayName") or "Aliado"
+                        tag_line = summoner.get("tagLine") or "BR1"
+                        icon_id = summoner.get("profileIconId", 29)
+                        level = summoner.get("summonerLevel", 30)
 
-            # Buscar perfil completo
-            summoner_info = self.get_summoner_by_puuid(puuid) if puuid else {}
-            
-            if not game_name or game_name.startswith("Invocador"):
-                game_name = summoner_info.get("gameName") or summoner_info.get("displayName") or game_name
-            if not tag_line or tag_line == "BR1":
-                tag_line = summoner_info.get("tagLine") or tag_line
+                        ranked = self.get_ranked_stats_by_puuid(puuid)
+                        solo_queue = None
+                        if ranked and "queues" in ranked:
+                            for q in ranked["queues"]:
+                                if q.get("queueType") == "RANKED_SOLO_5x5":
+                                    solo_queue = q
+                                    break
 
-            riot_id = f"{game_name}#{tag_line}"
+                        tier = solo_queue.get("tier", "UNRANKED") if solo_queue else "UNRANKED"
+                        division = solo_queue.get("division", "") if solo_queue else ""
+                        lp = solo_queue.get("leaguePoints", 0) if solo_queue else 0
+                        wins = solo_queue.get("wins", 0) if solo_queue else 0
+                        losses = solo_queue.get("losses", 0) if solo_queue else 0
+                        total = wins + losses
+                        wr = int((wins / total) * 100) if total > 0 else 50
 
-            # Buscar estatisticas ranqueadas
-            ranked_info = self.get_summoner_ranked_stats(puuid) if puuid else {}
-            solo_queue = None
-            flex_queue = None
+                        revealed_players.append({
+                            "puuid": puuid,
+                            "riot_id": f"{game_name}#{tag_line}",
+                            "game_name": game_name,
+                            "tag_line": tag_line,
+                            "level": level,
+                            "icon_id": icon_id,
+                            "tier": tier,
+                            "division": division,
+                            "lp": lp,
+                            "wins": wins,
+                            "losses": losses,
+                            "winrate": wr
+                        })
 
-            if ranked_info and "queues" in ranked_info:
-                queues = ranked_info.get("queues", [])
-                solo_queue = next((q for q in queues if q.get("queueType") in ["RANKED_SOLO_5x5", "RANKED_SOLO"]), None)
-                flex_queue = next((q for q in queues if q.get("queueType") in ["RANKED_FLEX_SR", "RANKED_FLEX"]), None)
+        # Fallback para myTeam da sessão de Champ Select
+        if not revealed_players:
+            session = self.get_champ_select_session()
+            if session and "myTeam" in session:
+                for member in session["myTeam"]:
+                    puuid = member.get("puuid")
+                    if puuid and puuid not in seen_puuids:
+                        seen_puuids.add(puuid)
+                        summoner = self.get_summoner_by_puuid(puuid)
+                        if summoner:
+                            game_name = summoner.get("gameName") or summoner.get("displayName") or f"Aliado {member.get('cellId')}"
+                            tag_line = summoner.get("tagLine") or "BR1"
+                            icon_id = summoner.get("profileIconId", 29)
+                            level = summoner.get("summonerLevel", 30)
 
-            # Extracao dos dados ranqueados Solo/Duo
-            tier = "UNRANKED"
-            division = ""
-            lp = 0
-            wins = 0
-            losses = 0
-            winrate = 50
+                            ranked = self.get_ranked_stats_by_puuid(puuid)
+                            solo_queue = None
+                            if ranked and "queues" in ranked:
+                                for q in ranked["queues"]:
+                                    if q.get("queueType") == "RANKED_SOLO_5x5":
+                                        solo_queue = q
+                                        break
 
-            if solo_queue:
-                tier = solo_queue.get("tier", "UNRANKED").upper()
-                division = solo_queue.get("division", solo_queue.get("rank", "I"))
-                lp = solo_queue.get("leaguePoints", 0)
-                wins = solo_queue.get("wins", 0)
-                losses = solo_queue.get("losses", 0)
-                total = wins + losses
-                if total > 0:
-                    winrate = round((wins / total) * 100)
-            elif flex_queue:
-                tier = flex_queue.get("tier", "UNRANKED").upper()
-                division = flex_queue.get("division", flex_queue.get("rank", "I"))
-                lp = flex_queue.get("leaguePoints", 0)
-                wins = flex_queue.get("wins", 0)
-                losses = flex_queue.get("losses", 0)
-                total = wins + losses
-                if total > 0:
-                    winrate = round((wins / total) * 100)
-            else:
-                # Fallback inteligente com dados padrao
-                tier = "MASTER" if idx == 2 else "DIAMOND"
-                division = "I"
-                lp = 85 + (idx * 15)
-                wins = 45 + (idx * 4)
-                losses = 30 + (idx * 2)
-                winrate = round((wins / (wins + losses)) * 100)
+                            tier = solo_queue.get("tier", "UNRANKED") if solo_queue else "UNRANKED"
+                            division = solo_queue.get("division", "") if solo_queue else ""
+                            lp = solo_queue.get("leaguePoints", 0) if solo_queue else 0
+                            wins = solo_queue.get("wins", 0) if solo_queue else 0
+                            losses = solo_queue.get("losses", 0) if solo_queue else 0
+                            total = wins + losses
+                            wr = int((wins / total) * 100) if total > 0 else 50
 
-            # Calculo de streak com historico recente
-            matches = self.get_summoner_match_history(puuid) if puuid else []
-            streak_count = 1
-            streak_type = "win" if winrate >= 50 else "loss"
+                            revealed_players.append({
+                                "puuid": puuid,
+                                "riot_id": f"{game_name}#{tag_line}",
+                                "game_name": game_name,
+                                "tag_line": tag_line,
+                                "level": level,
+                                "icon_id": icon_id,
+                                "tier": tier,
+                                "division": division,
+                                "lp": lp,
+                                "wins": wins,
+                                "losses": losses,
+                                "winrate": wr
+                            })
 
-            if matches:
-                last_win = None
-                curr_count = 0
-                for match in matches:
-                    participants_m = match.get("participants", [])
-                    is_win = False
-                    for part in participants_m:
-                        if part.get("puuid") == puuid or part.get("summonerId") == summoner_info.get("summonerId"):
-                            stats = part.get("stats", {})
-                            is_win = stats.get("win", False)
-                            break
-                    if last_win is None:
-                        last_win = is_win
-                        curr_count = 1
-                    elif last_win == is_win:
-                        curr_count += 1
-                    else:
-                        break
-                if last_win is not None:
-                    streak_type = "win" if last_win else "loss"
-                    streak_count = max(1, curr_count)
+        self.revealed_players = revealed_players
+        return {
+            "success": len(revealed_players) > 0,
+            "participants": revealed_players,
+            "count": len(revealed_players)
+        }
 
-            level = summoner_info.get("summonerLevel", 200 + (idx * 25))
-            icon_id = summoner_info.get("profileIconId", 29 + idx)
-
-            assigned_role = roles_order[idx % 5]
-            if is_champ_select_session and p.get("assignedPosition"):
-                pos = p.get("assignedPosition", "").upper()
-                if pos == "BOTTOM": assigned_role = "ADC"
-                elif pos == "UTILITY": assigned_role = "SUPPORT"
-                elif pos in roles_order: assigned_role = pos
-
-            revealed_players.append({
-                "cellId": idx,
-                "summonerId": str(summoner_info.get("summonerId", 9000 + idx)),
-                "puuid": puuid or f"puuid-revealed-{idx}",
-                "gameName": game_name,
-                "tagLine": tag_line,
-                "riotId": riot_id,
-                "assignedRole": assigned_role,
-                "summonerLevel": level,
-                "profileIconId": icon_id,
-                "rankedSolo": {
-                    "tier": tier,
-                    "rank": division,
-                    "leaguePoints": lp,
-                    "wins": wins,
-                    "losses": losses,
-                    "winrate": winrate
-                },
-                "streak": {
-                    "type": streak_type,
-                    "count": streak_count
-                }
-            })
-
-        if len(revealed_players) > 0:
-            self.cached_lobby = revealed_players
-            return {"success": True, "participants": revealed_players}
-
-        return {"success": False, "message": "Nenhum participante detectado na selecao de campeoes."}
-
-# Alias de compatibilidade
+# Aliases de compatibilidade
 LobbyRevealHandler = LobbyRevealer

@@ -1,9 +1,9 @@
 import time
 
 class AutoBanHandler:
-    def __init__(self, lcu_client, settings):
+    def __init__(self, lcu_client, settings=None):
         self.lcu = lcu_client
-        self.settings = settings
+        self.settings = settings if settings is not None else {}
         self.last_banned_action_id = None
 
     def get_pre_ban_champions(self):
@@ -18,6 +18,12 @@ class AutoBanHandler:
             except:
                 bans = []
         return [int(c) for c in bans if str(c).isdigit()]
+
+    def tick(self, session_data=None):
+        if session_data is None:
+            session_data = self.lcu.get_champ_select_session()
+        if session_data:
+            self.check_and_act(session_data)
 
     def check_and_act(self, session_data):
         if not self.settings.get("auto_ban_enabled", True) and not self.settings.get("autoBanEnabled", True):

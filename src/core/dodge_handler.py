@@ -4,8 +4,9 @@ import time
 import subprocess
 
 class DodgeHandler:
-    def __init__(self, lcu_client):
+    def __init__(self, lcu_client, settings=None):
         self.lcu = lcu_client
+        self.settings = settings if settings is not None else {}
         self.is_armed = False
         self.last_second_seconds = 3
 
