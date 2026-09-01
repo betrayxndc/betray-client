@@ -82,12 +82,12 @@ export const DownloadTab: React.FC<DownloadTabProps> = ({ settings, addLog }) =>
               </h1>
               
               <p className="text-sm text-slate-300 font-sans leading-relaxed">
-                Baixe diretamente o arquivo executável <strong className="text-rose-400 font-mono font-bold">BetrayClient.exe</strong> para Windows 10/11. Não precisa extrair ZIP, nem instalar Python, nem rodar compiladores ou builders — basta dar 2 cliques no <strong className="text-white">.exe</strong> e o client conecta direto ao League of Legends!
+                Baixe diretamente o arquivo executável <strong className="text-rose-400 font-mono font-bold">BetrayClient.exe</strong> para Windows 10/11. Ele é <strong className="text-emerald-300">100% auto-contido</strong>: ao executá-lo, todas as dependências, scripts e requisitos são preparados e instalados de forma totalmente automática no seu computador, sem necessidade de baixar a pasta do repositório!
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-400 font-mono">
                 <span className="flex items-center gap-1 text-emerald-400">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Executável .EXE Direto
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Auto-Instalação Integrada
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-1 text-rose-400">
@@ -95,7 +95,7 @@ export const DownloadTab: React.FC<DownloadTabProps> = ({ settings, addLog }) =>
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-1 text-cyan-400">
-                  <Zap className="w-3.5 h-3.5" /> Rose Skin Changer Integrado
+                  <Zap className="w-3.5 h-3.5" /> Rose Skin Changer & LCU
                 </span>
               </div>
             </div>
