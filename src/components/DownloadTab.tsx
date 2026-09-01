@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Download, ShieldCheck, Cpu, Sparkles, CheckCircle2, Zap, Monitor, AlertTriangle, Terminal, Copy, Check, Info } from 'lucide-react';
+import { Download, ShieldCheck, Cpu, Sparkles, CheckCircle2, Zap, Monitor, AlertTriangle, Terminal, Copy, Check, Info, FileCode } from 'lucide-react';
 import { AppSettings, LcuLog } from '../types';
-import { downloadWindowsPackage } from '../utils/installer';
+import { downloadDirectExe, downloadDirectCmd, downloadWindowsPackage } from '../utils/installer';
 import { APP_LOGO_SRC } from '../assets/logo';
 
 interface DownloadTabProps {
@@ -10,32 +10,52 @@ interface DownloadTabProps {
 }
 
 export const DownloadTab: React.FC<DownloadTabProps> = ({ settings, addLog }) => {
-  const [downloading, setDownloading] = useState(false);
+  const [downloadingExe, setDownloadingExe] = useState(false);
+  const [downloadingCmd, setDownloadingCmd] = useState(false);
+  const [downloadingZip, setDownloadingZip] = useState(false);
   const [copiedPowerShell, setCopiedPowerShell] = useState(false);
 
-  const handleDownload = async () => {
-    setDownloading(true);
+  const handleDownloadExe = async () => {
+    setDownloadingExe(true);
     try {
-      await downloadWindowsPackage(settings, addLog);
+      await downloadDirectExe(settings, addLog);
     } finally {
-      setDownloading(false);
+      setDownloadingExe(false);
     }
   };
 
-  const psCommand = `powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/betray/betray-client/main/setup.ps1' -OutFile 'setup.ps1'; .\\setup.ps1"`;
+  const handleDownloadCmd = async () => {
+    setDownloadingCmd(true);
+    try {
+      await downloadDirectCmd(settings, addLog);
+    } finally {
+      setDownloadingCmd(false);
+    }
+  };
+
+  const handleDownloadZip = async () => {
+    setDownloadingZip(true);
+    try {
+      await downloadWindowsPackage(settings, addLog);
+    } finally {
+      setDownloadingZip(false);
+    }
+  };
+
+  const psCommand = `powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/betray/betray-client/main/BetrayClient.exe' -OutFile 'BetrayClient.exe'; Start-Process 'BetrayClient.exe'"`;
 
   const copyPowerShellCmd = () => {
     navigator.clipboard.writeText(psCommand);
     setCopiedPowerShell(true);
     setTimeout(() => setCopiedPowerShell(false), 2500);
-    addLog('success', '📋 Comando de instalação rápida do PowerShell copiado!');
+    addLog('success', '📋 Comando de execução rápida copiado!');
   };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Main Download Card */}
-      <div className="bento-card p-6 md:p-10 bg-gradient-to-br from-[#0e1017] via-[#090b10] to-[#1a0710] border border-rose-600/70 shadow-[0_0_40px_rgba(225,29,72,0.25)] relative overflow-hidden rounded-2xl">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-rose-600/10 rounded-full blur-3xl pointer-events-none -mr-32 -mt-32" />
+      {/* Main Download Card - Direct EXE */}
+      <div className="bento-card p-6 md:p-10 bg-gradient-to-br from-[#0e1017] via-[#090b10] to-[#1a0710] border-2 border-rose-500/80 shadow-[0_0_50px_rgba(225,29,72,0.35)] relative overflow-hidden rounded-2xl">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-rose-600/15 rounded-full blur-3xl pointer-events-none -mr-32 -mt-32" />
         
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
           <div className="flex flex-col sm:flex-row items-start gap-5 max-w-2xl">
@@ -52,9 +72,9 @@ export const DownloadTab: React.FC<DownloadTabProps> = ({ settings, addLog }) =>
             </div>
 
             <div className="space-y-2.5">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-950/90 border border-rose-700/80 text-rose-300 text-xs font-mono font-bold tracking-wider">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/90 border border-emerald-500/80 text-emerald-300 text-xs font-mono font-bold tracking-wider">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>VERSÃO WINDOWS STANDALONE • 64-BIT COMPATÍVEL</span>
+                <span>DOWNLOAD DIRETO .EXE • SEM BUILDER OU COMPILADOR</span>
               </div>
               
               <h1 className="font-cinzel text-3xl md:text-5xl font-black text-white tracking-wide">
@@ -62,12 +82,12 @@ export const DownloadTab: React.FC<DownloadTabProps> = ({ settings, addLog }) =>
               </h1>
               
               <p className="text-sm text-slate-300 font-sans leading-relaxed">
-                Baixe o pacote oficial <strong className="text-white">BetrayClient_Windows.zip</strong> com o novo ícone <strong className="text-rose-400 font-bold">Talon Dark Assassin</strong>. Ele contém o compilador de 1 clique que gera o executável nativo <strong className="text-rose-400 font-mono">BetrayClient.exe</strong> no seu Windows.
+                Baixe diretamente o arquivo executável <strong className="text-rose-400 font-mono font-bold">BetrayClient.exe</strong> para Windows 10/11. Não precisa extrair ZIP, nem instalar Python, nem rodar compiladores ou builders — basta dar 2 cliques no <strong className="text-white">.exe</strong> e o client conecta direto ao League of Legends!
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-400 font-mono">
                 <span className="flex items-center gap-1 text-emerald-400">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Compilação Nativa PE 64-Bit
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Executável .EXE Direto
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-1 text-rose-400">
@@ -75,30 +95,94 @@ export const DownloadTab: React.FC<DownloadTabProps> = ({ settings, addLog }) =>
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-1 text-cyan-400">
-                  <Zap className="w-3.5 h-3.5" /> Zero Atraso / LCU Direta
+                  <Zap className="w-3.5 h-3.5" /> Rose Skin Changer Integrado
                 </span>
               </div>
             </div>
           </div>
 
           <div className="w-full md:w-auto flex flex-col gap-3 shrink-0">
+            {/* Direct EXE Download Button */}
             <button
-              id="download-package-zip-btn"
-              onClick={handleDownload}
-              disabled={downloading}
-              className="w-full md:w-72 px-8 py-5 rounded-xl bg-gradient-to-r from-rose-600 via-rose-500 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-cinzel font-black text-base uppercase tracking-widest shadow-[0_0_35px_rgba(225,29,72,0.6)] border border-rose-400/80 flex items-center justify-center gap-3 transition-all transform hover:scale-[1.03] active:scale-[0.98] cursor-pointer disabled:opacity-50"
+              id="download-direct-exe-btn"
+              onClick={handleDownloadExe}
+              disabled={downloadingExe}
+              className="w-full md:w-80 px-8 py-5 rounded-xl bg-gradient-to-r from-rose-600 via-rose-500 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-cinzel font-black text-base uppercase tracking-widest shadow-[0_0_40px_rgba(225,29,72,0.7)] border border-rose-400/90 flex items-center justify-center gap-3 transition-all transform hover:scale-[1.03] active:scale-[0.98] cursor-pointer disabled:opacity-50"
             >
-              <Download className={`w-6 h-6 ${downloading ? 'animate-bounce' : ''}`} />
-              <span>{downloading ? 'GERANDO PACOTE...' : 'BAIXAR PACOTE WINDOWS'}</span>
+              <Download className={`w-6 h-6 ${downloadingExe ? 'animate-bounce' : ''}`} />
+              <div className="flex flex-col text-left">
+                <span className="leading-tight">{downloadingExe ? 'BAIXANDO...' : 'BAIXAR BETRAYCLIENT.EXE'}</span>
+                <span className="text-[10px] font-mono text-rose-200 tracking-normal opacity-90">Arquivo .EXE Direto (1 Clique)</span>
+              </div>
             </button>
+
+            {/* Alternative formats */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleDownloadCmd}
+                disabled={downloadingCmd}
+                className="flex-1 px-3 py-2 rounded-lg bg-[#141824] hover:bg-[#1c2236] border border-slate-700 text-slate-300 hover:text-white text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                title="Baixar script executável .cmd direto"
+              >
+                <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Launcher .CMD</span>
+              </button>
+
+              <button
+                onClick={handleDownloadZip}
+                disabled={downloadingZip}
+                className="flex-1 px-3 py-2 rounded-lg bg-[#141824] hover:bg-[#1c2236] border border-slate-700 text-slate-300 hover:text-white text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                title="Baixar pacote completo em ZIP com fontes"
+              >
+                <FileCode className="w-3.5 h-3.5 text-purple-400" />
+                <span>Pacote .ZIP</span>
+              </button>
+            </div>
+
             <div className="text-[11px] text-center text-slate-400 font-mono">
-              Pacote: <strong className="text-rose-300">BetrayClient_Windows.zip</strong>
+              Formato: <strong className="text-emerald-300">BetrayClient.exe</strong> (Windows 64-Bit)
             </div>
           </div>
         </div>
       </div>
 
-      {/* Guia de Solução dos Alertas do Windows (SmartScreen & Incompatibilidade) */}
+      {/* Como Executar em 2 Segundos */}
+      <div className="bento-card p-6 border border-rose-950/80 bg-[#07090e] space-y-4 rounded-xl">
+        <div className="flex items-center gap-2 border-b border-rose-950/80 pb-3">
+          <Monitor className="w-5 h-5 text-rose-400" />
+          <h2 className="font-cinzel text-base font-bold text-white uppercase tracking-wider">
+            Como Usar o BetrayClient.exe (Sem Instalação)
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl bg-black/60 border border-slate-800/80 space-y-2">
+            <span className="w-6 h-6 rounded-full bg-rose-600 text-white font-mono font-bold text-xs flex items-center justify-center">1</span>
+            <h4 className="font-cinzel text-sm font-bold text-white">Baixe o BetrayClient.exe</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Clique no botão vermelho acima para baixar o arquivo <strong className="text-emerald-300 font-mono">BetrayClient.exe</strong> direto no seu PC.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-black/60 border border-slate-800/80 space-y-2">
+            <span className="w-6 h-6 rounded-full bg-rose-600 text-white font-mono font-bold text-xs flex items-center justify-center">2</span>
+            <h4 className="font-cinzel text-sm font-bold text-white">Dê 2 Cliques no .EXE</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Execute o <strong className="text-rose-300 font-mono">BetrayClient.exe</strong>. O aplicativo abre na hora, sem precisar de nenhum comando ou compilador.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-black/60 border border-slate-800/80 space-y-2">
+            <span className="w-6 h-6 rounded-full bg-rose-600 text-white font-mono font-bold text-xs flex items-center justify-center">3</span>
+            <h4 className="font-cinzel text-sm font-bold text-white">Conexão Automática</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Abra o seu <strong>League of Legends</strong>. O Betray Client detectará sua conta, ativará o Auto-Accept e o Rose Skin Changer em tempo real!
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Guia de Solução dos Alertas do Windows (SmartScreen) */}
       <div className="rounded-2xl border border-amber-600/50 bg-[#0f0e0a] p-6 shadow-xl space-y-4">
         <div className="flex items-start gap-3 border-b border-amber-900/40 pb-3">
           <div className="p-2.5 rounded-xl bg-amber-950/80 border border-amber-600/70 text-amber-400 shadow-md">
@@ -106,82 +190,22 @@ export const DownloadTab: React.FC<DownloadTabProps> = ({ settings, addLog }) =>
           </div>
           <div>
             <h3 className="font-cinzel text-base md:text-lg font-bold text-amber-200 uppercase tracking-wider">
-              Como Resolver os Alertas do Windows (Passo a Passo)
+              Dica: O que fazer se o Windows SmartScreen aparecer?
             </h3>
             <p className="text-xs text-slate-300 font-rajdhani mt-0.5">
-              Entenda por que esses avisos acontecem e como executar o aplicativo em 10 segundos:
+              Como o Betray Client é um utilitário open-source independente, o Windows pode exibir uma tela informativa:
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-          {/* Alerta 1: Este aplicativo não pode ser executado em seu PC */}
-          <div className="p-4 rounded-xl bg-black/60 border border-amber-900/40 space-y-2">
-            <div className="flex items-center gap-2 text-rose-300 font-cinzel font-bold text-xs uppercase tracking-wider">
-              <Info className="w-4 h-4 text-rose-400" />
-              <span>1. "Este aplicativo não pode ser executado em seu PC"</span>
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed font-sans">
-              <strong>Motivo:</strong> O Windows não permite renomear um arquivo ZIP direto para <code className="text-amber-300 font-mono">.exe</code> sem antes compilar o código binário (falta o cabeçalho PE).
-            </p>
-            <div className="p-2.5 rounded bg-emerald-950/40 border border-emerald-800/60 text-[11px] text-emerald-200 space-y-1">
-              <strong className="text-white block">✅ Solução Fácil:</strong>
-              <span>1. Baixe o pacote <strong className="text-white">BetrayClient_Windows.zip</strong> acima.</span><br />
-              <span>2. Clique com o botão direito nele e escolha <strong>"Extrair Tudo"</strong>.</span><br />
-              <span>3. Dê 2 cliques em <strong className="text-white">Instalar_e_Gerar_EXE.bat</strong>. Ele criará o <strong className="text-emerald-300">BetrayClient.exe</strong> compilado e executará na hora!</span>
-            </div>
+        <div className="p-4 rounded-xl bg-black/60 border border-amber-900/40 space-y-2">
+          <div className="flex items-center gap-2 text-amber-300 font-cinzel font-bold text-xs uppercase tracking-wider">
+            <ShieldCheck className="w-4 h-4 text-amber-400" />
+            <span>Como Liberar a Execução em 1 Segundo:</span>
           </div>
-
-          {/* Alerta 2: "O arquivo é perigoso" / SmartScreen */}
-          <div className="p-4 rounded-xl bg-black/60 border border-amber-900/40 space-y-2">
-            <div className="flex items-center gap-2 text-amber-300 font-cinzel font-bold text-xs uppercase tracking-wider">
-              <ShieldCheck className="w-4 h-4 text-amber-400" />
-              <span>2. "O arquivo é perigoso" ou "Windows protegeu seu PC"</span>
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed font-sans">
-              <strong>Motivo:</strong> O Windows SmartScreen e o Chrome exibem aviso para <em>todo e qualquer software novo</em> que não possua um certificado corporativo comprado da Microsoft (custa US$ 500/ano).
-            </p>
-            <div className="p-2.5 rounded bg-emerald-950/40 border border-emerald-800/60 text-[11px] text-emerald-200 space-y-1">
-              <strong className="text-white block">✅ Como Liberar em 1 Segundo:</strong>
-              <span>• <strong>No Navegador:</strong> Clique em <code className="bg-black/50 px-1 py-0.5 rounded text-amber-200">Manter</code> ou <code className="bg-black/50 px-1 py-0.5 rounded text-amber-200">Manter mesmo assim</code> nos downloads.</span><br />
-              <span>• <strong>No Windows:</strong> Na tela azul do SmartScreen, clique no link <strong>"Mais informações"</strong> e depois no botão <strong>"Executar assim mesmo"</strong>.</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Como Executar com Passo a Passo Visual */}
-      <div className="bento-card p-6 border border-rose-950/80 bg-[#07090e] space-y-4 rounded-xl">
-        <div className="flex items-center gap-2 border-b border-rose-950/80 pb-3">
-          <Monitor className="w-5 h-5 text-rose-400" />
-          <h2 className="font-cinzel text-base font-bold text-white uppercase tracking-wider">
-            3 Passos Simples para Criar seu BetrayClient.exe
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl bg-black/60 border border-slate-800/80 space-y-2">
-            <span className="w-6 h-6 rounded-full bg-rose-600 text-white font-mono font-bold text-xs flex items-center justify-center">1</span>
-            <h4 className="font-cinzel text-sm font-bold text-white">Baixe e Extraia o ZIP</h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Baixe o arquivo <strong className="text-white">BetrayClient_Windows.zip</strong> e extraia o conteúdo em qualquer pasta (ex: Área de Trabalho).
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl bg-black/60 border border-slate-800/80 space-y-2">
-            <span className="w-6 h-6 rounded-full bg-rose-600 text-white font-mono font-bold text-xs flex items-center justify-center">2</span>
-            <h4 className="font-cinzel text-sm font-bold text-white">Abra "BUILD_EXE.bat"</h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Dê 2 cliques no arquivo <strong className="text-rose-300 font-mono">BUILD_EXE.bat</strong> (ou <strong className="text-white font-mono">Instalar_e_Gerar_EXE.bat</strong>). Ele compilará o <strong className="text-rose-300 font-mono">BetrayClient.exe</strong> na hora!
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl bg-black/60 border border-slate-800/80 space-y-2">
-            <span className="w-6 h-6 rounded-full bg-rose-600 text-white font-mono font-bold text-xs flex items-center justify-center">3</span>
-            <h4 className="font-cinzel text-sm font-bold text-white">Pronto para Usar!</h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              O arquivo <strong>BetrayClient.exe</strong> estará pronto! A partir de então você só precisa abrir o <strong>.exe</strong> quando for jogar.
-            </p>
+          <div className="p-2.5 rounded bg-emerald-950/40 border border-emerald-800/60 text-[11px] text-emerald-200 space-y-1">
+            <span>• <strong>No Navegador:</strong> Se aparecer aviso de download, clique em <code className="bg-black/50 px-1 py-0.5 rounded text-amber-200">Manter</code> ou <code className="bg-black/50 px-1 py-0.5 rounded text-amber-200">Manter mesmo assim</code>.</span><br />
+            <span>• <strong>No Windows:</strong> Na tela azul do SmartScreen, clique no link <strong>"Mais informações"</strong> e depois no botão <strong>"Executar assim mesmo"</strong>.</span>
           </div>
         </div>
       </div>
