@@ -1,0 +1,7 @@
+pywebview>=5.0
+requests>=2.31.0
+websocket-client>=1.7.0
+urllib3>=2.0.7
+psutil>=5.9.8
+lcu-driver>=2.3.0
+pyinstaller>=6.4.0

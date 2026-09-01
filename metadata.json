@@ -1,0 +1,6 @@
+{
+  "name": "Betray Client",
+  "description": "Aplicativo completo de automação e utilitários para League of Legends (Lobby Reveal steele123/reveal, Auto-Accept, Pré-Pick, Pré-Ban, Skin Changer e Perfil LCU).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
