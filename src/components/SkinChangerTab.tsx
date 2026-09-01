@@ -1111,32 +1111,36 @@ export const SkinChangerTab: React.FC<SkinChangerTabProps> = ({
         </div>
       )}
 
-      {/* SUBVIEW 3: CHAMP SELECT / SKIN SELECTION SCREEN SYNC */}
+      {/* SUBVIEW 3: CHAMP SELECT / SKIN CAROUSEL WHEEL (RODA DE SKINS) */}
       {activeSubView === 'champ_select' && (
         <div className="space-y-4">
           <div className="bento-card p-5 space-y-4 border border-rose-900/60">
+            
+            {/* Header & Status Bar */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-rose-950/60 pb-3">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold tracking-widest uppercase">
-                  <Zap className="w-3 h-3 text-emerald-400" />
-                  Hook em Tempo Real // Seleção de Skins
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 text-[10px] font-bold tracking-widest uppercase shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+                  Hook em Tempo Real // Roda de Skins Ativa
                 </div>
-                <h3 className="font-cinzel text-base sm:text-lg font-bold text-white mt-1">
-                  TELA DE SELEÇÃO DE SKINS (CHAMP SELECT)
+                <h3 className="font-cinzel text-lg sm:text-xl font-bold text-white mt-1.5 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-rose-400" />
+                  RODA DE SKINS (CHAMP SELECT CAROUSEL)
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Ao selecionar um campeão na partida, o Betray recupera a skin salva na memória e a ativa no jogo. Você também pode trocar ou re-selecionar a skin instantaneamente aqui.
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Durante a seleção de campeões, a skin salva na memória é selecionada automaticamente na roda de skins do client. Você pode girar e escolher outra skin a qualquer momento abaixo.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded border border-emerald-700/40">
-                  FASE: {gameflowPhase}
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[11px] font-mono font-bold text-emerald-300 bg-emerald-950/80 px-3 py-1.5 rounded-lg border border-emerald-600/50 shadow-sm flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                  FASE: {gameflowPhase || 'ChampSelect'}
                 </span>
                 {onDodge && (
                   <button
                     onClick={onDodge}
-                    className="px-3 py-1 rounded bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800/80 font-cinzel font-bold text-xs uppercase tracking-wider cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800/80 font-cinzel font-bold text-xs uppercase tracking-wider cursor-pointer transition-colors shadow-md"
                   >
                     Dodge
                   </button>
@@ -1144,23 +1148,23 @@ export const SkinChangerTab: React.FC<SkinChangerTabProps> = ({
               </div>
             </div>
 
-            {/* Quick Champ Switcher (For testing and in-match fast selection) */}
+            {/* Quick Champ Switcher */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs text-slate-300">
-                <span className="font-cinzel font-bold flex items-center gap-1.5">
+                <span className="font-cinzel font-bold flex items-center gap-1.5 text-rose-300">
                   <Flame className="w-3.5 h-3.5 text-rose-400" />
                   Campeão Atual na Seleção:
                 </span>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  {champSelectChamp.name} ({champSelectChamp.title})
+                <span className="text-[11px] text-slate-400 font-mono">
+                  {champSelectChamp.name} • {champSelectChamp.skins.length} skins disponíveis
                 </span>
               </div>
 
-              {/* Quick horizontal champion pills */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 pr-1">
-                {CHAMPIONS_LIST.slice(0, 18).map((champ) => {
+              {/* Horizontal champion selector pills */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 pr-1 custom-scrollbar">
+                {CHAMPIONS_LIST.map((champ) => {
                   const isCur = champSelectChamp.key === champ.key;
-                  const hasSaved = !!settings.roseSelectedSkins?.[champ.key];
+                  const hasSaved = !!settings.roseSelectedSkins?.[champ.key] || !!settings.roseSelectedSkins?.[String(champ.id)];
 
                   return (
                     <button
@@ -1171,18 +1175,18 @@ export const SkinChangerTab: React.FC<SkinChangerTabProps> = ({
                       }}
                       className={`px-3 py-1.5 rounded-lg border text-xs font-cinzel font-bold flex items-center gap-2 shrink-0 transition-all cursor-pointer ${
                         isCur
-                          ? 'bg-rose-600 text-white border-rose-500 shadow-md ring-1 ring-white/30'
+                          ? 'bg-rose-600 text-white border-rose-400 shadow-[0_0_15px_rgba(225,29,72,0.4)] ring-2 ring-rose-300/30 scale-105'
                           : 'bg-[#07090e] text-slate-300 border-rose-950/80 hover:border-rose-700 hover:text-white'
                       }`}
                     >
                       <img
                         src={champ.icon}
                         alt={champ.name}
-                        className="w-5 h-5 rounded-full object-cover"
+                        className="w-5 h-5 rounded-full object-cover border border-slate-700"
                       />
                       <span>{champ.name}</span>
                       {hasSaved && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.8)]" title="Skin pré-configurada na memória" />
                       )}
                     </button>
                   );
@@ -1190,126 +1194,249 @@ export const SkinChangerTab: React.FC<SkinChangerTabProps> = ({
               </div>
             </div>
 
-            {/* Active Champion Skin Picker in Champ Select */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-2">
-              
-              {/* Left: Active Skin Status Stage */}
-              <div className="lg:col-span-6 bento-card p-4 space-y-3 border border-rose-900/50">
-                <div className="flex items-center justify-between border-b border-rose-950/60 pb-2">
-                  <span className="font-cinzel font-bold text-xs text-slate-200">
-                    Skin Pronta para Injeção
-                  </span>
-                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-600/40">
-                    {champSelectSavedSkin ? 'Memória Ativa' : 'Padrão'}
-                  </span>
-                </div>
+            {/* RODA DE SKINS INTERATIVA (LoL Skin Carousel Wheel) */}
+            {(() => {
+              const skins = champSelectChamp.skins;
+              const currentSkinNum = champSelectSavedSkin?.skinNum ?? 0;
+              const activeIndex = Math.max(0, skins.findIndex(s => s.num === currentSkinNum));
+              const activeSkin = skins[activeIndex] || skins[0];
+              const fullSkinId = champSelectChamp.id * 1000 + activeSkin.num;
 
-                {/* Display active skin */}
-                {(() => {
-                  const skin = champSelectSavedSkin 
-                    ? champSelectChamp.skins.find(s => s.num === champSelectSavedSkin.skinNum) || champSelectChamp.skins[0]
-                    : champSelectChamp.skins[0];
+              const handlePrevSkin = () => {
+                const prevIdx = (activeIndex - 1 + skins.length) % skins.length;
+                handleSelectSkin(skins[prevIdx]);
+              };
 
-                  return (
+              const handleNextSkin = () => {
+                const nextIdx = (activeIndex + 1) % skins.length;
+                handleSelectSkin(skins[nextIdx]);
+              };
+
+              return (
+                <div className="space-y-4 pt-1">
+                  
+                  {/* Visual 3D / Horizontal Skin Carousel Wheel Stage */}
+                  <div className="relative rounded-2xl overflow-hidden border-2 border-rose-600/50 bg-[#04060a] shadow-[0_0_40px_rgba(0,0,0,0.8)] p-6 min-h-[380px] flex flex-col justify-between">
+                    
+                    {/* Atmospheric background splash blur */}
                     <div
-                      className="relative h-48 rounded-lg overflow-hidden border border-rose-800/60 bg-cover bg-center flex items-end p-4 shadow-lg"
-                      style={{
-                        backgroundImage: `linear-gradient(to top, rgba(5,6,8,0.95) 20%, rgba(5,6,8,0.3) 60%, rgba(5,6,8,0.6) 100%), url(${skin.splashUrl})`
-                      }}
-                    >
-                      <div className="relative z-10 w-full flex items-end justify-between gap-2">
-                        <div>
-                          <div className="text-[10px] font-mono text-rose-400 font-bold">
-                            SKIN ID: {champSelectChamp.id * 1000 + skin.num}
+                      className="absolute inset-0 bg-cover bg-center opacity-25 filter blur-md transition-all duration-700 scale-105"
+                      style={{ backgroundImage: `url(${activeSkin.splashUrl})` }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#04060a] via-[#04060a]/80 to-transparent" />
+                    <div className="absolute inset-0 bg-radial-gradient from-transparent via-[#04060a]/60 to-[#04060a]" />
+
+                    {/* Top Carousel Bar: Indicator & Actions */}
+                    <div className="relative z-10 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="px-3 py-1 rounded-full bg-emerald-950/90 border border-emerald-400 text-emerald-300 text-xs font-mono font-bold flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>SELECIONADA NA RODA DE SKINS</span>
+                        </div>
+                        <span className="text-xs font-mono text-slate-400">
+                          [{activeIndex + 1} / {skins.length}]
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => handleSaveAndArmSkin(champSelectChamp, activeSkin, selectedChromaIndex)}
+                        className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-cinzel font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(225,29,72,0.4)] flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Zap className="w-3.5 h-3.5" />
+                        Forçar Seleção no LoL
+                      </button>
+                    </div>
+
+                    {/* Center 3D Carousel Cards with Left/Right arrows */}
+                    <div className="relative z-10 py-6 flex items-center justify-center gap-3 sm:gap-6">
+                      
+                      {/* Left Navigation Arrow */}
+                      <button
+                        onClick={handlePrevSkin}
+                        className="p-3 sm:p-4 rounded-full bg-black/70 hover:bg-rose-600/90 text-white border border-rose-500/40 hover:border-rose-400 transition-all duration-200 cursor-pointer shadow-lg hover:scale-110 active:scale-95 shrink-0 z-20"
+                        title="Skin Anterior"
+                      >
+                        <ChevronLeft className="w-6 h-6" />
+                      </button>
+
+                      {/* Left Neighbor Card (Scaled down) */}
+                      {skins.length > 1 && (() => {
+                        const leftIdx = (activeIndex - 1 + skins.length) % skins.length;
+                        const leftSkin = skins[leftIdx];
+                        return (
+                          <div
+                            onClick={() => handleSelectSkin(leftSkin)}
+                            className="hidden md:flex flex-col items-center opacity-40 hover:opacity-80 transition-all duration-300 cursor-pointer scale-75 hover:scale-80 shrink-0 select-none"
+                          >
+                            <div className="w-36 h-56 rounded-xl overflow-hidden border border-slate-700 bg-black shadow-xl">
+                              <img src={leftSkin.splashUrl} alt={leftSkin.name} className="w-full h-full object-cover" />
+                            </div>
+                            <span className="font-cinzel text-xs text-slate-300 mt-2 font-bold truncate max-w-[140px]">
+                              {leftSkin.name}
+                            </span>
                           </div>
-                          <h3 className="font-cinzel text-lg font-bold text-white">
-                            {skin.name}
-                          </h3>
-                          <p className="text-[11px] text-slate-300">
-                            {champSelectSavedSkin ? '✓ Recuperada da memória permanente' : 'Skin padrão do campeão'}
-                          </p>
+                        );
+                      })()}
+
+                      {/* CENTER HERO CARD (Active Selected Skin on Wheel) */}
+                      <div className="flex flex-col items-center shrink-0 z-10 transition-all duration-300 animate-fadeIn">
+                        <div className="relative w-64 sm:w-80 h-44 sm:h-52 rounded-2xl overflow-hidden border-2 border-rose-400 bg-black shadow-[0_0_35px_rgba(225,29,72,0.5)] ring-4 ring-rose-500/20 group">
+                          <img
+                            src={activeSkin.splashUrl}
+                            alt={activeSkin.name}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                          
+                          {/* Top Badges */}
+                          <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded bg-black/80 border border-rose-500/60 text-[10px] font-mono text-rose-300 font-bold">
+                              ID: {fullSkinId}
+                            </span>
+                            {selectedChromaIndex !== null && (
+                              <span className="px-2 py-0.5 rounded bg-purple-950/90 border border-purple-400 text-[10px] font-mono text-purple-300 font-bold">
+                                Chroma Ativo
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Bottom Card Title */}
+                          <div className="absolute bottom-3 left-3 right-3">
+                            <div className="text-[10px] font-mono text-rose-400 font-bold uppercase tracking-wider">
+                              {champSelectChamp.name}
+                            </div>
+                            <div className="font-cinzel text-base sm:text-lg font-bold text-white leading-tight">
+                              {activeSkin.name}
+                            </div>
+                          </div>
                         </div>
 
-                        <button
-                          onClick={() => handleSaveAndArmSkin(champSelectChamp, skin)}
-                          className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded font-cinzel uppercase tracking-wider cursor-pointer shadow-md"
-                        >
-                          Re-selecionar
-                        </button>
+                        {/* Lock state badge */}
+                        <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-950/80 border border-rose-600/60 text-xs font-cinzel font-bold text-rose-200">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Armada & Pronta para Partida</span>
+                        </div>
+                      </div>
+
+                      {/* Right Neighbor Card (Scaled down) */}
+                      {skins.length > 1 && (() => {
+                        const rightIdx = (activeIndex + 1) % skins.length;
+                        const rightSkin = skins[rightIdx];
+                        return (
+                          <div
+                            onClick={() => handleSelectSkin(rightSkin)}
+                            className="hidden md:flex flex-col items-center opacity-40 hover:opacity-80 transition-all duration-300 cursor-pointer scale-75 hover:scale-80 shrink-0 select-none"
+                          >
+                            <div className="w-36 h-56 rounded-xl overflow-hidden border border-slate-700 bg-black shadow-xl">
+                              <img src={rightSkin.splashUrl} alt={rightSkin.name} className="w-full h-full object-cover" />
+                            </div>
+                            <span className="font-cinzel text-xs text-slate-300 mt-2 font-bold truncate max-w-[140px]">
+                              {rightSkin.name}
+                            </span>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Right Navigation Arrow */}
+                      <button
+                        onClick={handleNextSkin}
+                        className="p-3 sm:p-4 rounded-full bg-black/70 hover:bg-rose-600/90 text-white border border-rose-500/40 hover:border-rose-400 transition-all duration-200 cursor-pointer shadow-lg hover:scale-110 active:scale-95 shrink-0 z-20"
+                        title="Próxima Skin"
+                      >
+                        <ChevronRight className="w-6 h-6" />
+                      </button>
+
+                    </div>
+
+                    {/* Bottom Strip: Fast Carousel Thumbnails */}
+                    <div className="relative z-10 pt-2 border-t border-rose-950/60">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-cinzel font-bold text-slate-300 flex items-center gap-1.5">
+                          <Palette className="w-3.5 h-3.5 text-rose-400" />
+                          Miniaturas da Roda ({skins.length} Skins):
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          Clique em qualquer skin para girar a roda
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                        {skins.map((skin, idx) => {
+                          const isCur = activeIndex === idx;
+                          return (
+                            <button
+                              key={skin.id || skin.num}
+                              onClick={() => handleSelectSkin(skin)}
+                              className={`relative rounded-lg overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
+                                isCur
+                                  ? 'w-24 h-16 border-emerald-400 ring-2 ring-emerald-500/60 shadow-[0_0_15px_rgba(16,185,129,0.6)] scale-105'
+                                  : 'w-20 h-14 border-slate-800 hover:border-rose-500/80 opacity-60 hover:opacity-100'
+                              }`}
+                            >
+                              <img src={skin.splashUrl} alt={skin.name} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                              <div className="absolute bottom-1 left-1 right-1 text-[9px] font-bold font-cinzel text-white truncate">
+                                {skin.name}
+                              </div>
+                              {isCur && (
+                                <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400" />
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
-                  );
-                })()}
 
-                <div className="p-3 rounded bg-[#07090e] border border-rose-950/80 text-xs text-slate-300 space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Campeão:</span>
-                    <span className="font-bold text-white">{champSelectChamp.name}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Skin Configurada:</span>
-                    <span className="font-mono text-rose-300 font-bold">
-                      {champSelectSavedSkin?.skinName || `${champSelectChamp.name} Clássico(a)`}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Modo de Aplicação:</span>
-                    <span className="font-mono text-emerald-400 font-bold">Ao Iniciar Partida (Rose Engine)</span>
-                  </div>
-                </div>
-              </div>
 
-              {/* Right: Instant Skin Switcher Grid */}
-              <div className="lg:col-span-6 bento-card p-4 space-y-3">
-                <div className="flex items-center justify-between border-b border-rose-950/60 pb-2">
-                  <span className="font-cinzel font-bold text-xs text-slate-200">
-                    Trocar Skin Rapidamente no Champ Select
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {champSelectChamp.skins.length} Opções
-                  </span>
-                </div>
+                  {/* Chroma selection for the active skin */}
+                  <div className="bento-card p-4 space-y-2 border border-rose-900/40">
+                    <div className="flex items-center justify-between">
+                      <span className="font-cinzel font-bold text-xs text-slate-200 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                        Cromas Disponíveis para {activeSkin.name}:
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {selectedChromaIndex !== null ? `Chroma #${selectedChromaIndex} ativo` : 'Croma padrão (Original)'}
+                      </span>
+                    </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
-                  {champSelectChamp.skins.map((skin) => {
-                    const isCur = champSelectSavedSkin?.skinNum === skin.num;
-
-                    return (
+                    <div className="flex items-center gap-2 flex-wrap pt-1">
                       <button
-                        key={skin.id || skin.num}
-                        onClick={() => handleSaveAndArmSkin(champSelectChamp, skin)}
-                        className={`p-2 rounded-lg border text-left flex flex-col gap-1 transition-all cursor-pointer relative ${
-                          isCur
-                            ? 'bg-emerald-950/80 border-emerald-400 ring-2 ring-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]'
-                            : 'bg-[#07090e] border-rose-950/80 hover:border-rose-700 hover:bg-slate-900'
+                        onClick={() => handleSelectSkin(activeSkin, null)}
+                        className={`px-3 py-1.5 rounded-lg border text-xs font-mono font-bold transition-all cursor-pointer ${
+                          selectedChromaIndex === null
+                            ? 'bg-rose-600 text-white border-rose-400 shadow-md'
+                            : 'bg-[#07090e] text-slate-300 border-slate-800 hover:border-rose-700'
                         }`}
                       >
-                        <div className="h-14 w-full rounded overflow-hidden bg-black relative">
-                          <img
-                            src={skin.splashUrl}
-                            alt={skin.name}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                          {isCur && (
-                            <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-emerald-950/95 border border-emerald-400 text-[8px] font-bold text-emerald-300 font-mono">
-                              ✓ ATIVA
-                            </div>
-                          )}
-                        </div>
-                        <div className={`text-[11px] font-bold font-cinzel line-clamp-1 ${isCur ? 'text-emerald-300' : 'text-white'}`}>
-                          {skin.name}
-                        </div>
-                        <div className={`text-[9px] font-mono ${isCur ? 'text-emerald-400 font-bold' : 'text-slate-400'}`}>
-                          {isCur ? '✓ Selecionada no LoL' : 'Clique p/ Selecionar'}
-                        </div>
+                        Padrão (Original)
                       </button>
-                    );
-                  })}
-                </div>
-              </div>
 
-            </div>
+                      {chromaColors.map((chroma, idx) => {
+                        const isCur = selectedChromaIndex === idx;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => handleSelectSkin(activeSkin, idx)}
+                            className={`px-3 py-1.5 rounded-lg border text-xs font-mono font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                              isCur
+                                ? 'bg-purple-900 text-white border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.5)] ring-1 ring-purple-300'
+                                : 'bg-[#07090e] text-slate-300 border-slate-800 hover:border-purple-600'
+                            }`}
+                          >
+                            <span className={`w-3 h-3 rounded-full ${chroma.bg} border border-white/40 shadow-sm`} />
+                            <span>{chroma.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })()}
+
           </div>
         </div>
       )}

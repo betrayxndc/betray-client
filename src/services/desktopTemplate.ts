@@ -259,92 +259,177 @@ export function getDesktopHtml(champions: Champion[]): string {
 
     <!-- TAB 4: SKIN CHANGER (ROSE ENGINE) -->
     <section id="tab-rose-changer" class="tab-content hidden space-y-5">
-      <div class="bento-card p-6">
+      <div class="bento-card p-6 space-y-5">
+        
+        {/* Header */}
         <div class="flex flex-col md:flex-row items-start md:items-center justify-between border-b border-rose-950/60 pb-3 gap-3">
           <div>
             <div class="text-[10px] text-rose-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
               <span>🌸 Módulo 3 // In-Game Skin Changer (Rose Engine)</span>
               <span class="text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded text-[9px] border border-emerald-700/50">Anti-Vanguard Safe</span>
             </div>
-            <h2 class="font-cinzel text-xl font-bold text-white mt-1">SKIN CHANGER EM JOGO (ROSE ENGINE)</h2>
-            <p class="text-xs text-slate-400">Troque skins e chromas no League of Legends em tempo real sem risco de banimentos.</p>
+            <h2 class="font-cinzel text-xl font-bold text-white mt-1">SKIN CHANGER & RODA DE SKINS</h2>
+            <p class="text-xs text-slate-400">Arme skins personalizadas que são salvas na memória e selecionadas automaticamente na roda de skins durante o Champ Select.</p>
           </div>
           <div class="flex items-center gap-3">
             <button onclick="toggleRoseChanger()" id="btn-toggle-rose" class="px-4 py-2 rounded bg-rose-600 hover:bg-rose-700 text-white font-cinzel font-bold text-xs uppercase tracking-wider shadow">
               ROSE CHANGER: ATIVADO
             </button>
-            <div class="flex items-center gap-2 bg-[#07090e] p-1.5 rounded-lg border border-rose-950/60">
-              <button id="rose-step1-indicator" onclick="setRoseStep(1)" class="px-3 py-1.5 rounded text-xs font-cinzel font-bold bg-rose-600 text-white shadow">
-                1. Campeão
-              </button>
-              <span class="text-slate-600 text-xs">→</span>
-              <button id="rose-step2-indicator" onclick="setRoseStep(2)" class="px-3 py-1.5 rounded text-xs font-cinzel font-bold text-slate-400 hover:text-slate-200">
-                2. Skin & Chromas
-              </button>
-            </div>
           </div>
         </div>
 
-        <!-- PASSO 1: ESCOLHER CAMPEÃO -->
-        <div id="rose-step-1-view" class="mt-5 space-y-4">
-          <div class="flex items-center justify-between">
-            <h3 class="font-cinzel text-sm font-bold text-slate-200">SELECIONE O CAMPEÃO</h3>
-            <input id="search-rose-champ" type="text" oninput="filterRoseChampions(this.value)" placeholder="Buscar campeão (ex: Talon, Zed)..." class="p-2 bg-[#07090e] border border-rose-950 rounded text-xs text-white focus:border-rose-500">
-          </div>
-          <div id="rose-champions-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5 max-h-96 overflow-y-auto p-1"></div>
+        {/* Subtabs for Skin Changer */}
+        <div class="flex items-center gap-2 border-b border-rose-950/80 pb-2">
+          <button id="rose-subtab-catalog-btn" onclick="switchRoseSubtab('catalog')" class="px-4 py-2 rounded-lg bg-rose-600 text-white font-cinzel font-bold text-xs uppercase tracking-wider transition-all shadow">
+            1. Catálogo de Skins
+          </button>
+          <button id="rose-subtab-saved-btn" onclick="switchRoseSubtab('saved')" class="px-4 py-2 rounded-lg bg-[#07090e] text-slate-400 hover:text-white font-cinzel font-bold text-xs uppercase tracking-wider transition-all">
+            2. Memória & Salvas
+          </button>
+          <button id="rose-subtab-wheel-btn" onclick="switchRoseSubtab('wheel')" class="px-4 py-2 rounded-lg bg-[#07090e] text-emerald-400 hover:text-emerald-300 border border-emerald-900/60 font-cinzel font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            3. Roda de Skins (Champ Select)
+          </button>
         </div>
 
-        <!-- PASSO 2: ESCOLHER SKIN & CHROMAS -->
-        <div id="rose-step-2-view" class="mt-5 space-y-5 hidden">
-          <div class="flex items-center justify-between p-3 rounded-lg bg-[#07090e] border border-rose-950">
-            <div class="flex items-center gap-3">
-              <img id="rose-chosen-champ-icon" src="" class="w-10 h-10 rounded-md border border-rose-600">
-              <div>
-                <div class="text-[10px] text-rose-400 font-bold uppercase">Campeão Configurado</div>
-                <h3 id="rose-chosen-champ-name" class="font-cinzel text-base font-bold text-white">Zed</h3>
-              </div>
-            </div>
-            <button onclick="setRoseStep(1)" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-cinzel font-bold uppercase">
-              ← Trocar Campeão
+        {/* SUBVIEW 1: CATALOG (Step 1 + Step 2) */}
+        <div id="rose-subview-catalog" class="space-y-4">
+          <!-- Step Indicator -->
+          <div class="flex items-center gap-2 bg-[#07090e] p-2 rounded-lg border border-rose-950/60 max-w-xs">
+            <button id="rose-step1-indicator" onclick="setRoseStep(1)" class="px-3 py-1.5 rounded text-xs font-cinzel font-bold bg-rose-600 text-white shadow">
+              1. Campeão
+            </button>
+            <span class="text-slate-600 text-xs">→</span>
+            <button id="rose-step2-indicator" onclick="setRoseStep(2)" class="px-3 py-1.5 rounded text-xs font-cinzel font-bold text-slate-400 hover:text-slate-200">
+              2. Skin & Chromas
             </button>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="md:col-span-2 space-y-3">
-              <div class="relative rounded-lg overflow-hidden border border-rose-800/80 h-72 bg-black shadow-2xl">
-                <img id="rose-skin-preview-img" src="" class="w-full h-full object-cover">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent"></div>
-                <div class="absolute bottom-4 left-4 right-4 flex items-end justify-between">
-                  <div>
-                    <h3 id="rose-skin-champ-name" class="font-cinzel text-2xl font-bold text-white">Zed</h3>
-                    <p id="rose-skin-title" class="text-xs text-rose-400 font-bold">Zed Clássico</p>
-                    <span id="rose-chroma-badge" class="hidden text-[10px] font-mono text-purple-300 bg-purple-950/80 px-2 py-0.5 rounded border border-purple-600/50 mt-1 inline-block">Chroma Ativo</span>
-                  </div>
-                  <button onclick="armRoseSkinInGame()" class="px-5 py-2.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-cinzel font-bold text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(225,29,72,0.4)] cursor-pointer">
-                    🌸 ARMAR SKIN NO JOGO
-                  </button>
-                </div>
-              </div>
+          <!-- PASSO 1: ESCOLHER CAMPEÃO -->
+          <div id="rose-step-1-view" class="space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-cinzel text-sm font-bold text-slate-200">SELECIONE O CAMPEÃO</h3>
+              <input id="search-rose-champ" type="text" oninput="filterRoseChampions(this.value)" placeholder="Buscar campeão (ex: Talon, Zed)..." class="p-2 bg-[#07090e] border border-rose-950 rounded text-xs text-white focus:border-rose-500">
+            </div>
+            <div id="rose-champions-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5 max-h-96 overflow-y-auto p-1"></div>
+          </div>
 
-              <!-- Rose ChromaWheel -->
-              <div id="rose-chroma-box" class="p-3 rounded-lg bg-[#07090e] border border-purple-950/60 space-y-2">
-                <div class="flex items-center justify-between text-xs font-cinzel font-bold text-purple-300">
-                  <span>🎨 Seletor de Chromas</span>
-                  <span id="rose-chroma-selected-label" class="text-[10px] text-slate-400 font-mono">Padrão</span>
+          <!-- PASSO 2: ESCOLHER SKIN & CHROMAS -->
+          <div id="rose-step-2-view" class="space-y-5 hidden">
+            <div class="flex items-center justify-between p-3 rounded-lg bg-[#07090e] border border-rose-950">
+              <div class="flex items-center gap-3">
+                <img id="rose-chosen-champ-icon" src="" class="w-10 h-10 rounded-md border border-rose-600">
+                <div>
+                  <div class="text-[10px] text-rose-400 font-bold uppercase">Campeão Configurado</div>
+                  <h3 id="rose-chosen-champ-name" class="font-cinzel text-base font-bold text-white">Zed</h3>
                 </div>
-                <div class="flex items-center gap-2 flex-wrap" id="rose-chroma-palette"></div>
               </div>
+              <button onclick="setRoseStep(1)" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-cinzel font-bold uppercase">
+                ← Trocar Campeão
+              </button>
             </div>
 
-            <div class="space-y-3">
-              <div class="text-xs font-bold uppercase text-slate-300 flex items-center justify-between">
-                <span>Skins Disponíveis:</span>
-                <span id="rose-skin-count" class="text-rose-400 font-mono text-[10px]"></span>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div class="md:col-span-2 space-y-3">
+                <div class="relative rounded-lg overflow-hidden border border-rose-800/80 h-72 bg-black shadow-2xl">
+                  <img id="rose-skin-preview-img" src="" class="w-full h-full object-cover">
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent"></div>
+                  <div class="absolute bottom-4 left-4 right-4 flex items-end justify-between">
+                    <div>
+                      <h3 id="rose-skin-champ-name" class="font-cinzel text-2xl font-bold text-white">Zed</h3>
+                      <p id="rose-skin-title" class="text-xs text-rose-400 font-bold">Zed Clássico</p>
+                      <span id="rose-chroma-badge" class="hidden text-[10px] font-mono text-purple-300 bg-purple-950/80 px-2 py-0.5 rounded border border-purple-600/50 mt-1 inline-block">Chroma Ativo</span>
+                    </div>
+                    <button onclick="armRoseSkinInGame()" class="px-5 py-2.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-cinzel font-bold text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(225,29,72,0.4)] cursor-pointer">
+                      🌸 ARMAR SKIN NO JOGO
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Rose ChromaWheel -->
+                <div id="rose-chroma-box" class="p-3 rounded-lg bg-[#07090e] border border-purple-950/60 space-y-2">
+                  <div class="flex items-center justify-between text-xs font-cinzel font-bold text-purple-300">
+                    <span>🎨 Seletor de Chromas</span>
+                    <span id="rose-chroma-selected-label" class="text-[10px] text-slate-400 font-mono">Padrão</span>
+                  </div>
+                  <div class="flex items-center gap-2 flex-wrap" id="rose-chroma-palette"></div>
+                </div>
               </div>
-              <div id="rose-skins-list-container" class="space-y-2 max-h-72 overflow-y-auto pr-1"></div>
+
+              <div class="space-y-3">
+                <div class="text-xs font-bold uppercase text-slate-300 flex items-center justify-between">
+                  <span>Skins Disponíveis:</span>
+                  <span id="rose-skin-count" class="text-rose-400 font-mono text-[10px]"></span>
+                </div>
+                <div id="rose-skins-list-container" class="space-y-2 max-h-72 overflow-y-auto pr-1"></div>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* SUBVIEW 2: SAVED SKINS IN MEMORY */}
+        <div id="rose-subview-saved" class="space-y-4 hidden">
+          <div class="flex items-center justify-between">
+            <h3 class="font-cinzel text-sm font-bold text-white">SKINS SALVAS NA MEMÓRIA PERMANENTE</h3>
+            <button onclick="clearAllRoseSkinsDesktop()" class="px-3 py-1 rounded bg-rose-950 border border-rose-800 text-rose-300 text-xs font-cinzel">
+              Limpar Todas
+            </button>
+          </div>
+          <div id="rose-saved-skins-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
+        </div>
+
+        {/* SUBVIEW 3: INTERACTIVE SKIN CAROUSEL WHEEL (RODA DE SKINS) */}
+        <div id="rose-subview-wheel" class="space-y-4 hidden">
+          <div class="p-4 rounded-xl bg-[#04060a] border-2 border-rose-600/60 shadow-[0_0_35px_rgba(0,0,0,0.8)] space-y-4">
+            
+            {/* Wheel Top Bar */}
+            <div class="flex items-center justify-between flex-wrap gap-2 border-b border-rose-950/60 pb-3">
+              <div class="flex items-center gap-2">
+                <span class="px-3 py-1 rounded-full bg-emerald-950/90 border border-emerald-400 text-emerald-300 text-xs font-mono font-bold flex items-center gap-1.5 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                  ✓ SELECIONADA NA RODA DE SKINS
+                </span>
+                <span id="wheel-skin-counter" class="text-xs font-mono text-slate-400">[1 / 10]</span>
+              </div>
+              <button onclick="armRoseSkinInGame()" class="px-4 py-1.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-cinzel font-bold text-xs uppercase shadow">
+                ⚡ Forçar Seleção no LoL
+              </button>
+            </div>
+
+            {/* Quick Champion Selector Strip */}
+            <div class="space-y-1.5">
+              <div class="text-[11px] font-cinzel text-slate-300 font-bold">Campeão Ativo no Champ Select:</div>
+              <div id="wheel-champions-strip" class="flex items-center gap-2 overflow-x-auto pb-2"></div>
+            </div>
+
+            {/* Visual 3D Carousel Stage */}
+            <div class="relative min-h-[300px] flex items-center justify-center gap-4 py-4 overflow-hidden rounded-xl bg-[#07090e] border border-rose-950">
+              <button onclick="navWheelSkin(-1)" class="p-3 rounded-full bg-black/80 hover:bg-rose-600 text-white border border-rose-500/50 cursor-pointer z-10 hover:scale-110 transition-transform">
+                ❮
+              </button>
+
+              <div id="wheel-hero-card" class="relative w-80 h-52 rounded-2xl overflow-hidden border-2 border-rose-400 shadow-[0_0_35px_rgba(225,29,72,0.5)] z-10 bg-black">
+                <img id="wheel-hero-img" src="" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent"></div>
+                <div class="absolute bottom-3 left-3 right-3">
+                  <div id="wheel-champ-label" class="text-[10px] font-mono text-rose-400 font-bold uppercase">Zed</div>
+                  <div id="wheel-skin-label" class="font-cinzel text-base font-bold text-white">Zed Clássico</div>
+                </div>
+              </div>
+
+              <button onclick="navWheelSkin(1)" class="p-3 rounded-full bg-black/80 hover:bg-rose-600 text-white border border-rose-500/50 cursor-pointer z-10 hover:scale-110 transition-transform">
+                ❯
+              </button>
+            </div>
+
+            {/* Bottom Strip: Skin Thumbnails */}
+            <div class="space-y-1.5 pt-2 border-t border-rose-950/60">
+              <div class="text-[11px] font-cinzel text-slate-300 font-bold">Miniaturas da Roda de Skins:</div>
+              <div id="wheel-thumbnails-strip" class="flex items-center gap-2 overflow-x-auto pb-2"></div>
+            </div>
+
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -967,6 +1052,175 @@ export function getDesktopHtml(champions: Champion[]): string {
         \`;
         grid.appendChild(item);
       });
+    }
+
+    function switchRoseSubtab(subtab) {
+      document.getElementById('rose-subview-catalog').classList.add('hidden');
+      document.getElementById('rose-subview-saved').classList.add('hidden');
+      document.getElementById('rose-subview-wheel').classList.add('hidden');
+
+      const btnCatalog = document.getElementById('rose-subtab-catalog-btn');
+      const btnSaved = document.getElementById('rose-subtab-saved-btn');
+      const btnWheel = document.getElementById('rose-subtab-wheel-btn');
+
+      [btnCatalog, btnSaved, btnWheel].forEach(b => {
+        b.className = 'px-4 py-2 rounded-lg bg-[#07090e] text-slate-400 hover:text-white font-cinzel font-bold text-xs uppercase tracking-wider transition-all';
+      });
+
+      if (subtab === 'catalog') {
+        document.getElementById('rose-subview-catalog').classList.remove('hidden');
+        btnCatalog.className = 'px-4 py-2 rounded-lg bg-rose-600 text-white font-cinzel font-bold text-xs uppercase tracking-wider transition-all shadow';
+      } else if (subtab === 'saved') {
+        document.getElementById('rose-subview-saved').classList.remove('hidden');
+        btnSaved.className = 'px-4 py-2 rounded-lg bg-rose-600 text-white font-cinzel font-bold text-xs uppercase tracking-wider transition-all shadow';
+        renderSavedSkinsDesktop();
+      } else if (subtab === 'wheel') {
+        document.getElementById('rose-subview-wheel').classList.remove('hidden');
+        btnWheel.className = 'px-4 py-2 rounded-lg bg-emerald-600 text-white font-cinzel font-bold text-xs uppercase tracking-wider transition-all shadow flex items-center gap-1.5';
+        renderWheelViewDesktop();
+      }
+    }
+
+    let wheelChampSkins = [];
+    let wheelSkinIndex = 0;
+
+    function renderWheelViewDesktop() {
+      // 1. Render Champ Strip
+      const champStrip = document.getElementById('wheel-champions-strip');
+      if (champStrip) {
+        champStrip.innerHTML = '';
+        CHAMPIONS.slice(0, 16).forEach(c => {
+          const isSelected = selectedRoseChamp && selectedRoseChamp.id === c.id;
+          const btn = document.createElement('button');
+          btn.className = 'px-2 py-1 rounded-lg flex items-center gap-1.5 shrink-0 text-xs font-cinzel border transition-all ' + 
+            (isSelected ? 'bg-rose-600 text-white border-rose-400 font-bold shadow' : 'bg-[#07090e] text-slate-400 border-rose-950/60 hover:text-slate-200');
+          btn.onclick = () => {
+            selectRoseChampion(c);
+            renderWheelViewDesktop();
+          };
+          btn.innerHTML = '<img src="' + c.icon + '" class="w-5 h-5 rounded object-cover"> <span>' + c.name + '</span>';
+          champStrip.appendChild(btn);
+        });
+      }
+
+      // 2. Prepare skins list for current champion
+      const champ = selectedRoseChamp || CHAMPIONS[0];
+      wheelChampSkins = (champ.skins && champ.skins.length > 0)
+        ? champ.skins.map((s, idx) => ({
+            id: s.id === 0 ? (champ.id * 1000) : (champ.id * 1000 + (s.num !== undefined ? s.num : idx)),
+            num: s.num !== undefined ? s.num : idx,
+            name: s.name,
+            chromas: s.chromas || false,
+            splash: s.splashUrl ? s.splashUrl : ('https://ddragon.leagueoflegends.com/cdn/img/champion/splash/' + champ.key + '_' + (s.num !== undefined ? s.num : idx) + '.jpg')
+          }))
+        : [{ id: champ.id * 1000, num: 0, name: champ.name + ' Clássico(a)', splash: 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash/' + champ.key + '_0.jpg', chromas: false }];
+
+      // Check if we have a saved skin for this champion
+      const savedKey = String(champ.id);
+      const savedObj = (currentSettings.rose_selected_skins && currentSettings.rose_selected_skins[savedKey])
+        ? currentSettings.rose_selected_skins[savedKey]
+        : ((currentSettings.rose_selected_skins && currentSettings.rose_selected_skins[champ.key]) ? currentSettings.rose_selected_skins[champ.key] : null);
+
+      if (savedObj) {
+        const foundIdx = wheelChampSkins.findIndex(s => s.id === savedObj.skinId || s.num === savedObj.skinNum);
+        if (foundIdx >= 0) wheelSkinIndex = foundIdx;
+        else wheelSkinIndex = 0;
+      } else {
+        wheelSkinIndex = 0;
+      }
+
+      updateWheelVisuals();
+    }
+
+    function updateWheelVisuals() {
+      if (wheelChampSkins.length === 0) return;
+      const champ = selectedRoseChamp || CHAMPIONS[0];
+      const curSkin = wheelChampSkins[wheelSkinIndex] || wheelChampSkins[0];
+
+      const counterEl = document.getElementById('wheel-skin-counter');
+      if (counterEl) counterEl.innerText = '[' + (wheelSkinIndex + 1) + ' / ' + wheelChampSkins.length + ']';
+
+      const imgEl = document.getElementById('wheel-hero-img');
+      if (imgEl) imgEl.src = curSkin.splash;
+
+      const champLabel = document.getElementById('wheel-champ-label');
+      if (champLabel) champLabel.innerText = champ.name;
+
+      const skinLabel = document.getElementById('wheel-skin-label');
+      if (skinLabel) skinLabel.innerText = curSkin.name;
+
+      // Thumbnails
+      const thumbsContainer = document.getElementById('wheel-thumbnails-strip');
+      if (thumbsContainer) {
+        thumbsContainer.innerHTML = '';
+        wheelChampSkins.forEach((s, idx) => {
+          const isCurrent = idx === wheelSkinIndex;
+          const thumb = document.createElement('div');
+          thumb.className = 'w-12 h-12 rounded-lg border-2 overflow-hidden shrink-0 cursor-pointer transition-all ' +
+            (isCurrent ? 'border-rose-500 scale-105 shadow-[0_0_10px_rgba(225,29,72,0.6)]' : 'border-slate-800 opacity-60 hover:opacity-100');
+          thumb.onclick = () => {
+            wheelSkinIndex = idx;
+            previewRoseSkinObj(s);
+            armRoseSkinInGame();
+            updateWheelVisuals();
+          };
+          thumb.innerHTML = '<img src="' + s.splash + '" class="w-full h-full object-cover">';
+          thumbsContainer.appendChild(thumb);
+        });
+      }
+    }
+
+    function navWheelSkin(dir) {
+      if (wheelChampSkins.length === 0) return;
+      wheelSkinIndex = (wheelSkinIndex + dir + wheelChampSkins.length) % wheelChampSkins.length;
+      const curSkin = wheelChampSkins[wheelSkinIndex];
+      previewRoseSkinObj(curSkin);
+      armRoseSkinInGame();
+      updateWheelVisuals();
+    }
+
+    function renderSavedSkinsDesktop() {
+      const grid = document.getElementById('rose-saved-skins-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      const saved = currentSettings.rose_selected_skins || {};
+      const keys = Object.keys(saved);
+
+      if (keys.length === 0) {
+        grid.innerHTML = '<div class="col-span-3 p-6 text-center text-slate-500 font-mono text-xs">Nenhuma skin salva na memória ainda. Escolha no catálogo ou na roda de skins para salvar!</div>';
+        return;
+      }
+
+      keys.forEach(k => {
+        const item = saved[k];
+        const card = document.createElement('div');
+        card.className = 'p-3 rounded-lg bg-[#07090e] border border-rose-950 flex items-center justify-between gap-3';
+        card.innerHTML = 
+          '<div class="flex items-center gap-2.5 min-w-0">' +
+            '<div class="w-8 h-8 rounded-full bg-rose-950 border border-rose-600 flex items-center justify-center text-xs font-bold text-rose-300">🌸</div>' +
+            '<div class="min-w-0">' +
+              '<div class="text-xs font-bold text-slate-200 truncate">' + (item.skinName || 'Skin #' + item.skinId) + '</div>' +
+              '<div class="text-[10px] text-slate-400 font-mono">Champ: ' + k + ' • SkinID: ' + item.skinId + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<button onclick="removeSavedRoseSkinDesktop(\'' + k + '\')" class="text-rose-500 hover:text-rose-300 text-xs font-bold p-1">✕</button>';
+        grid.appendChild(card);
+      });
+    }
+
+    function removeSavedRoseSkinDesktop(key) {
+      if (currentSettings.rose_selected_skins && currentSettings.rose_selected_skins[key]) {
+        delete currentSettings.rose_selected_skins[key];
+        syncSettings();
+        renderSavedSkinsDesktop();
+      }
+    }
+
+    function clearAllRoseSkinsDesktop() {
+      currentSettings.rose_selected_skins = {};
+      syncSettings();
+      renderSavedSkinsDesktop();
     }
 
     function filterRoseChampions(val) {
