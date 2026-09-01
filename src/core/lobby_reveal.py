@@ -254,3 +254,6 @@ class LobbyRevealer:
             return {"success": True, "participants": revealed_players}
 
         return {"success": False, "message": "Nenhum participante detectado na selecao de campeoes."}
+
+# Alias de compatibilidade
+LobbyRevealHandler = LobbyRevealer

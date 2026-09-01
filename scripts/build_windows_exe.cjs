@@ -157,7 +157,10 @@ from src.core.auto_pick import AutoPickHandler
 from src.core.auto_ban import AutoBanHandler
 from src.core.background_changer import BackgroundChanger
 from src.core.rose_skin_changer import RoseSkinChanger
-from src.core.lobby_reveal import LobbyRevealHandler
+try:
+    from src.core.lobby_reveal import LobbyRevealHandler
+except ImportError:
+    from src.core.lobby_reveal import LobbyRevealer as LobbyRevealHandler
 from src.core.dodge_handler import DodgeHandler
 
 PORT = 3000
@@ -499,12 +502,12 @@ int main(int argc, char* argv[]) {
     } else if (py_status == 1) {
         printf("[+] Python nativo detectado no PATH do Windows.\\n");
         printf("[*] Verificando dependencias necessarias...\\n");
-        system("python -m pip install -q -r requirements.txt");
+        system("python -m pip install -q --no-warn-script-location -r requirements.txt");
         snprintf(run_cmd, sizeof(run_cmd), "python main.py");
     } else if (py_status == 2) {
         printf("[+] Python Launcher (py) detectado no Windows.\\n");
         printf("[*] Verificando dependencias necessarias...\\n");
-        system("py -3 -m pip install -q -r requirements.txt");
+        system("py -3 -m pip install -q --no-warn-script-location -r requirements.txt");
         snprintf(run_cmd, sizeof(run_cmd), "py -3 main.py");
     } else {
         // Baixa e instala automaticamente!

@@ -1518,6 +1518,8 @@ class LobbyRevealer:
             return {"success": True, "participants": revealed_players}
 
         return {"success": False, "message": "Nenhum participante detectado na selecao de campeoes."}
+
+LobbyRevealHandler = LobbyRevealer
 `,
     'src/core/dodge_handler.py': `import os
 import sys
