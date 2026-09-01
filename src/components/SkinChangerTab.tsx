@@ -1256,6 +1256,70 @@ export const SkinChangerTab: React.FC<SkinChangerTabProps> = ({
         </div>
       )}
 
+      {/* FIXED FLOATING TOAST NOTIFICATION (BOTTOM-RIGHT) */}
+      {confirmedSkinModal && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md w-full animate-slideUp pointer-events-auto">
+          <div className="p-4 rounded-xl bg-[#07090e]/95 backdrop-blur-md border-2 border-rose-500 shadow-[0_0_35px_rgba(225,29,72,0.45)] text-white relative overflow-hidden">
+            <div className="flex items-center gap-3.5">
+              <div className="w-14 h-14 rounded-lg overflow-hidden border-2 border-rose-500 shrink-0 bg-black shadow-md">
+                <img
+                  src={confirmedSkinModal.splashUrl}
+                  alt={confirmedSkinModal.skinName}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    Skin Armada no Betray
+                  </span>
+                  <span className="text-[9px] font-mono bg-emerald-950 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-600/40 font-bold">
+                    LCU PRONTA
+                  </span>
+                </div>
+                <div className="text-sm font-bold text-white font-cinzel truncate">
+                  {confirmedSkinModal.skinName}
+                </div>
+                <div className="text-xs text-slate-300 font-rajdhani flex items-center gap-1.5 truncate">
+                  <span className="text-rose-300 font-bold">{confirmedSkinModal.championName}</span>
+                  <span>•</span>
+                  <span className="font-mono text-slate-400 text-[11px]">ID: {confirmedSkinModal.skinId}</span>
+                  {confirmedSkinModal.chromaName && (
+                    <>
+                      <span>•</span>
+                      <span className="text-purple-300 font-mono text-[11px]">{confirmedSkinModal.chromaName}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setConfirmedSkinModal(null)}
+                className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
+                title="Fechar notificação"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mt-2.5 pt-2 border-t border-rose-950/60 flex items-center justify-between text-[11px]">
+              <span className="text-slate-400 text-[10px]">
+                Auto-seleção pronta para o Champ Select
+              </span>
+              <button
+                onClick={() => {
+                  setConfirmedSkinModal(null);
+                  setActiveSubView('champ_select');
+                }}
+                className="text-rose-400 hover:text-rose-300 font-bold font-cinzel text-[11px] underline cursor-pointer"
+              >
+                Ver na Seleção de Skins →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

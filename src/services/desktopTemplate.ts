@@ -1,4 +1,5 @@
 import { Champion, AppSettings } from '../types';
+import { TALON_LOGO_BASE64 } from '../assets/logoBase64';
 
 export function getDesktopHtml(champions: Champion[]): string {
   const champJson = JSON.stringify(champions);
@@ -37,7 +38,9 @@ export function getDesktopHtml(champions: Champion[]): string {
     ::-webkit-scrollbar-thumb:hover { background: #e11d48; }
   </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between">
+<body class="min-h-screen flex flex-col justify-between relative">
+  <!-- Top-level Toast Notification Container -->
+  <div id="rose-toast-container" class="fixed top-20 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
 
   <!-- TOPBAR / NAVBAR -->
   <header class="sticky top-0 z-40 bg-[#07090e]/95 backdrop-blur-md border-b border-rose-950/60 shadow-[0_4px_25px_rgba(0,0,0,0.8)]">
@@ -47,7 +50,7 @@ export function getDesktopHtml(champions: Champion[]): string {
       <div class="flex items-center gap-3">
         <div class="flex items-center justify-center gap-2.5 px-3 py-1.5 rounded-xl bg-black border border-rose-900/70 shadow-[0_0_15px_rgba(0,0,0,0.8)]">
           <div class="w-8 h-8 rounded-lg overflow-hidden border border-rose-500/70 flex items-center justify-center bg-[#0d0710] shadow-[0_0_10px_rgba(225,29,72,0.4)] shrink-0">
-            <span class="text-base select-none">🗡️</span>
+            <img src="${TALON_LOGO_BASE64}" class="w-full h-full object-cover" alt="Betray Client Logo" />
           </div>
           <div class="flex flex-col">
             <h1 class="font-cinzel text-sm sm:text-base font-black tracking-widest text-[#f8fafc] whitespace-nowrap leading-none">

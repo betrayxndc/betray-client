@@ -107,6 +107,18 @@ class AutoPickHandler:
                                     "completed": True
                                 })
                             self.last_locked_action_id = action_id
+
+                            # Rose Skin Changer - Injeção imediata da skin configurada na memória
+                            saved_skins = self.settings.get("rose_selected_skins") or self.settings.get("roseSelectedSkins") or {}
+                            skin_data = saved_skins.get(str(target_champ_id))
+                            if skin_data and skin_data.get("skinId"):
+                                target_s_id = int(skin_data.get("chromaId")) if skin_data.get("chromaId") is not None else int(skin_data.get("skinId"))
+                                try:
+                                    self.lcu.patch("/lol-champ-select/v1/session/my-selection", {"selectedSkinId": target_s_id})
+                                    self.lcu.patch("/lol-champ-select/v1/current-champion", {"championId": int(target_champ_id), "selectedSkinId": target_s_id})
+                                    self.lcu.post(f"/lol-champ-select/v1/skin-carousel/skins/{target_s_id}/select", {})
+                                except Exception:
+                                    pass
                         break
 
                     elif not is_completed and action.get("championId") != target_champ_id:
